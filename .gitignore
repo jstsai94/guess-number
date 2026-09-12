@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 建置產物，由 GitHub Actions 產生並部署，不進版控
+docs
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
