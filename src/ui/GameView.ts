@@ -9,7 +9,8 @@ import { createResultOverlay } from './ResultOverlay';
 import { createStatsPanel } from './StatsPanel';
 import { loadStats, recordResult } from './statsStore';
 
-const HINT_TEXT = '輸入 4 個不重複的數字，可用鍵盤直接打';
+const HINT_KEYBOARD = '輸入 4 個不重複的數字，可用鍵盤直接打';
+const HINT_TOUCH = '輸入 4 個不重複的數字，用下方數字鍵盤輸入';
 
 export interface GameViewOptions {
   /** 「再玩一次」時由外層負責開新局。 */
@@ -47,7 +48,10 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     onSubmit: (code) => handleSubmit(code),
   });
 
-  const hint = el('p', { class: 'hint', text: HINT_TEXT });
+  // 兩種提示同時存在，由 CSS 依裝置決定顯示哪一個
+  const hintKeyboard = el('span', { class: 'hint-keyboard', text: HINT_KEYBOARD });
+  const hintTouch = el('span', { class: 'hint-touch', text: HINT_TOUCH });
+  const hint = el('p', { class: 'hint' }, [hintKeyboard, hintTouch]);
 
   // 放棄按鈕在第 10 次猜測前「不存在」，所以用一個空容器，需要時才把按鈕放進去
   const surrenderSlot = el('div', { class: 'surrender-slot' });
@@ -84,6 +88,22 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     result.el,
     confirm.el,
   ]);
+
+  /**
+   * 實體鍵盤監聽掛在這一局的 root 上，不是 document 上。
+   * 未來同畫面有兩局時，按鍵只會送進焦點所在的那一局。
+   */
+  root.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (session.isFinished) return;
+
+    const target = event.target;
+    // 焦點在別的按鈕上時，Enter / 空白鍵留給那顆按鈕自己處理
+    if (target instanceof HTMLButtonElement && !target.classList.contains('slot')) {
+      if (event.key === 'Enter' || event.key === ' ') return;
+    }
+
+    input.handleKey(event);
+  });
 
   // ---------- 送出 ----------
 
@@ -180,12 +200,12 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   }
 
   function showError(message: string): void {
-    hint.textContent = message;
+    hint.replaceChildren(message);
     hint.className = 'hint is-error';
   }
 
   function clearError(): void {
-    hint.textContent = HINT_TEXT;
+    hint.replaceChildren(hintKeyboard, hintTouch);
     hint.className = 'hint';
   }
 

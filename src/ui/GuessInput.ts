@@ -3,7 +3,7 @@ import { el } from './dom';
 export interface GuessInputOptions {
   /** 數字格數量。 */
   length: number;
-  /** 按下送出（或 Enter）時觸發，帶入目前 4 格組成的字串。 */
+  /** 按下送出（或 Enter）時觸發，帶入目前已填入的字串。 */
   onSubmit: (code: string) => void;
 }
 
@@ -12,88 +12,168 @@ export interface GuessInputHandle {
   /** 目前輸入的內容，未填滿時長度會小於 length。 */
   value(): string;
   clear(): void;
+  /** 把編輯位置移回第一格。 */
   focusFirst(): void;
   setEnabled(enabled: boolean): void;
+  /** 由外層把實體鍵盤事件轉進來；有處理到就回傳 true。 */
+  handleKey(event: KeyboardEvent): boolean;
 }
 
 /**
- * 4 個獨立數字格 + 送出按鈕。
+ * 4 個數字格 + 送出按鈕 + 頁面內建數字鍵盤。
  *
- * 鍵盤優先：打字自動跳下一格、Backspace 退回上一格、Enter 送出。
+ * 數字格刻意**不是** <input>：在手機與平板上點 <input> 會叫出系統鍵盤，
+ * 擋住半個畫面，iOS 還會順便把頁面放大。改用按鈕之後，
+ * 觸控裝置一律走頁面內建鍵盤，桌機則照舊用實體鍵盤直接打。
+ *
+ * 鍵盤行為不變：打字自動跳下一格、Backspace 退回上一格、Enter 送出。
  * 這個元件不做合法性判斷，只負責收集輸入。
  */
 export function createGuessInput(options: GuessInputOptions): GuessInputHandle {
   const { length, onSubmit } = options;
 
-  const cells: HTMLInputElement[] = [];
+  const digits = Array.from({ length }, () => '');
+  let active = 0;
+
+  // ---------- 數字格 ----------
+
+  const slots: HTMLButtonElement[] = [];
   for (let i = 0; i < length; i += 1) {
-    cells.push(
-      el('input', {
-        class: 'digit',
-        type: 'text',
-        inputmode: 'numeric',
-        maxlength: 1,
-        autocomplete: 'off',
-        'aria-label': `第 ${i + 1} 個數字`,
-      }),
-    );
+    const slot = el('button', {
+      class: 'slot',
+      type: 'button',
+      'aria-label': `第 ${i + 1} 個數字`,
+    });
+    slot.addEventListener('click', () => setActive(i));
+    slots.push(slot);
   }
 
   const submitButton = el('button', { class: 'submit', type: 'button', text: '送出' });
-  const row = el('div', { class: 'input-row' }, [...cells, submitButton]);
+  submitButton.addEventListener('click', submit);
 
-  const value = (): string => cells.map((cell) => cell.value).join('');
+  const row = el('div', { class: 'input-row' }, [...slots, submitButton]);
 
-  const focusCell = (index: number): void => {
-    const target = cells[Math.min(Math.max(index, 0), length - 1)];
-    target?.focus();
-    target?.select();
+  // ---------- 頁面內建數字鍵盤 ----------
+
+  const keypadKeys: HTMLButtonElement[] = [];
+
+  const numberKey = (digit: string): HTMLButtonElement => {
+    const key = el('button', { class: 'key', type: 'button', text: digit });
+    key.addEventListener('click', () => typeDigit(digit));
+    keypadKeys.push(key);
+    return key;
   };
 
-  const submit = (): void => {
-    onSubmit(value());
-  };
+  const backspaceKey = el('button', {
+    class: 'key key-text',
+    type: 'button',
+    text: '刪除',
+  });
+  backspaceKey.addEventListener('click', backspace);
+  keypadKeys.push(backspaceKey);
 
-  cells.forEach((cell, index) => {
-    cell.addEventListener('input', () => {
-      // 只留下最後輸入的那個數字，非數字一律丟棄
-      const digits = cell.value.replace(/\D/g, '');
-      cell.value = digits.slice(-1);
-      if (cell.value !== '' && index < length - 1) focusCell(index + 1);
+  const keypadSubmit = el('button', {
+    class: 'key key-submit',
+    type: 'button',
+    text: '送出',
+  });
+  keypadSubmit.addEventListener('click', submit);
+  keypadKeys.push(keypadSubmit);
+
+  const keypad = el('div', { class: 'keypad' }, [
+    ...['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(numberKey),
+    backspaceKey,
+    numberKey('0'),
+    keypadSubmit,
+  ]);
+
+  const root = el('div', { class: 'input-area' }, [row, keypad]);
+
+  // ---------- 行為 ----------
+
+  function value(): string {
+    return digits.join('');
+  }
+
+  function paint(): void {
+    slots.forEach((slot, i) => {
+      slot.textContent = digits[i] ?? '';
+      slot.classList.toggle('is-active', i === active);
+      slot.classList.toggle('is-filled', digits[i] !== '');
     });
+  }
 
-    cell.addEventListener('keydown', (event: KeyboardEvent) => {
+  function setActive(index: number): void {
+    active = Math.min(Math.max(index, 0), length - 1);
+    paint();
+    slots[active]?.focus();
+  }
+
+  function typeDigit(digit: string): void {
+    digits[active] = digit;
+    if (active < length - 1) setActive(active + 1);
+    else paint();
+  }
+
+  function backspace(): void {
+    if (digits[active] !== '') {
+      // 本格有字就先清本格
+      digits[active] = '';
+      paint();
+      return;
+    }
+    if (active > 0) {
+      // 本格已空，退回上一格並清掉它
+      digits[active - 1] = '';
+      setActive(active - 1);
+    }
+  }
+
+  function submit(): void {
+    onSubmit(value());
+  }
+
+  paint();
+
+  return {
+    el: root,
+    value,
+
+    clear(): void {
+      digits.fill('');
+      active = 0;
+      paint();
+    },
+
+    focusFirst(): void {
+      setActive(0);
+    },
+
+    setEnabled(enabled: boolean): void {
+      for (const slot of slots) slot.disabled = !enabled;
+      for (const key of keypadKeys) key.disabled = !enabled;
+      submitButton.disabled = !enabled;
+    },
+
+    handleKey(event: KeyboardEvent): boolean {
+      if (event.altKey || event.ctrlKey || event.metaKey) return false;
+
+      if (event.key >= '0' && event.key <= '9' && event.key.length === 1) {
+        event.preventDefault();
+        typeDigit(event.key);
+        return true;
+      }
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        backspace();
+        return true;
+      }
       if (event.key === 'Enter') {
         event.preventDefault();
         submit();
-        return;
+        return true;
       }
-      if (event.key === 'Backspace' && cell.value === '' && index > 0) {
-        // 本格已空，退回上一格並清掉它
-        event.preventDefault();
-        const previous = cells[index - 1]!;
-        previous.value = '';
-        focusCell(index - 1);
-      }
-    });
-
-    cell.addEventListener('focus', () => cell.select());
-  });
-
-  submitButton.addEventListener('click', submit);
-
-  return {
-    el: row,
-    value,
-    clear(): void {
-      for (const cell of cells) cell.value = '';
-    },
-    focusFirst(): void {
-      focusCell(0);
-    },
-    setEnabled(enabled: boolean): void {
-      for (const cell of cells) cell.disabled = !enabled;
-      submitButton.disabled = !enabled;
+      return false;
     },
   };
 }

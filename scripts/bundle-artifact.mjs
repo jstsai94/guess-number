@@ -55,7 +55,7 @@ const standalone = `<!doctype html>
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="4 位不重複數字的 1A2B 猜數字遊戲，含筆記板與本機統計。" />
     <link rel="icon" href="${favicon}" />
     <title>1A2B 猜數字</title>

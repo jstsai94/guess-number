@@ -1,5 +1,13 @@
 /*
- * 桌機版樣式。固定寬度 1180px，不做 RWD、不做斷點、不做深色主題。
+ * 版面策略：
+ *   桌機（≥1000px）  雙欄，最大寬度 1180px 置中
+ *   平板 / 窄視窗     單欄堆疊
+ *   手機（≤720px）    單欄 + 字級與間距縮小
+ *
+ * 觸控裝置一律顯示頁面內建數字鍵盤，並隱藏行內的送出按鈕
+ * —— 數字格是 <button> 不是 <input>，所以永遠不會叫出系統鍵盤。
+ *
+ * 淺色單一主題，不做深色模式。
  */
 
 :root {
@@ -36,6 +44,11 @@
   box-sizing: border-box;
 }
 
+html {
+  /* 手機轉橫向時不要自動放大字級 */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -46,10 +59,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* 所有可點的東西都不要有 300ms 延遲與點擊灰影 */
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .app {
-  width: 1180px;
+  width: 100%;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 52px 0 110px;
+  padding: 52px 20px 110px;
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
 }
 
 /* ---------- 按鈕 ---------- */
@@ -122,6 +149,8 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .title {
@@ -168,6 +197,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 26px;
+  min-width: 0;
 }
 
 .panel-title {
@@ -184,8 +214,12 @@ body {
   gap: 12px;
 }
 
-.digit {
-  width: 66px;
+/*
+ * 數字格是按鈕，不是 <input>：
+ * 觸控裝置點下去只會切換編輯位置，不會叫出系統鍵盤。
+ */
+.slot {
+  flex: 0 0 66px;
   height: 66px;
   padding: 0;
   border: 1px solid var(--line-strong);
@@ -194,19 +228,24 @@ body {
   color: var(--text);
   font-family: var(--mono);
   font-size: 29px;
+  line-height: 1;
   text-align: center;
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
 
-.digit:focus {
-  outline: none;
+/* 目前正在編輯的格子：藍色外框加光暈 */
+.slot.is-active {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.digit:disabled {
+.slot:disabled {
   background: #f5f6f8;
   color: var(--text-muted);
+  cursor: default;
+  box-shadow: none;
+  border-color: var(--line-strong);
 }
 
 .submit {
@@ -233,6 +272,66 @@ body {
   cursor: default;
 }
 
+/* ---------- 頁面內建數字鍵盤 ---------- */
+
+.keypad {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 420px;
+  margin-top: 18px;
+}
+
+.key {
+  height: 56px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+.key:active {
+  background: #eef1f6;
+  border-color: #b9c0cb;
+}
+
+.key-text {
+  font-family: inherit;
+  font-size: 17px;
+  color: var(--text-soft);
+}
+
+.key-submit {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 17px;
+}
+
+.key-submit:active {
+  background: var(--accent-hover);
+  border-color: transparent;
+}
+
+.key:disabled {
+  background: #f5f6f8;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.key-submit:disabled {
+  background: #c3cad6;
+  color: #fff;
+}
+
+/* ---------- 提示與錯誤 ---------- */
+
 .hint {
   margin: 14px 0 0;
   color: var(--text-muted);
@@ -242,6 +341,10 @@ body {
 .hint.is-error {
   color: var(--error);
   font-weight: 600;
+}
+
+.hint-touch {
+  display: none;
 }
 
 .surrender-slot:not(:empty) {
@@ -277,6 +380,7 @@ body {
 }
 
 .history-index {
+  flex: none;
   width: 38px;
   color: var(--text-muted);
   font-size: 14px;
@@ -292,6 +396,7 @@ body {
 
 .history-result {
   margin-left: auto;
+  flex: none;
   font-family: var(--mono);
   font-size: 30px;
   font-weight: 700;
@@ -426,6 +531,7 @@ body {
 
 .legend {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-top: 12px;
   color: var(--text-muted);
@@ -490,6 +596,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
   background: rgba(24, 32, 44, 0.42);
 }
 
@@ -498,7 +605,8 @@ body {
 }
 
 .overlay-card {
-  width: 420px;
+  width: 100%;
+  max-width: 420px;
   padding: 36px 38px 32px;
   border-radius: 20px;
   background: var(--surface);
@@ -559,7 +667,7 @@ body {
 /* ---------- 二次確認 ---------- */
 
 .confirm-card {
-  width: 440px;
+  max-width: 440px;
   padding: 32px 34px 26px;
 }
 
@@ -584,4 +692,213 @@ body {
   justify-content: center;
   gap: 12px;
   margin-top: 26px;
+}
+
+/* ======================================================================
+ * 觸控裝置：顯示頁面內建數字鍵盤，收掉行內送出按鈕
+ * ====================================================================== */
+
+@media (any-pointer: coarse), (max-width: 720px) {
+  .keypad {
+    display: grid;
+  }
+
+  /*
+   * 錯誤訊息必須貼著數字格，不能被四排鍵盤推到看不見的地方。
+   * display: contents 讓 .input-area 的子層直接變成 .panel-left 的排版項目，
+   * 才能把提示插到數字格與鍵盤之間。
+   */
+  .panel-left {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .input-area {
+    display: contents;
+  }
+
+  .input-row {
+    order: 1;
+  }
+
+  .hint {
+    order: 2;
+  }
+
+  .keypad {
+    order: 3;
+  }
+
+  .surrender-slot {
+    order: 4;
+  }
+
+  .history {
+    order: 5;
+  }
+
+  .input-row .submit {
+    display: none;
+  }
+
+  .input-row {
+    gap: 10px;
+  }
+
+  .slot {
+    flex: 1 1 0;
+    max-width: 96px;
+  }
+
+  .hint-keyboard {
+    display: none;
+  }
+
+  .hint-touch {
+    display: inline;
+  }
+}
+
+/* ======================================================================
+ * 平板與窄視窗：改成單欄
+ * ====================================================================== */
+
+@media (max-width: 1000px) {
+  .app {
+    padding-top: 40px;
+    padding-bottom: 72px;
+  }
+
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======================================================================
+ * 手機：字級與間距整體縮一階
+ * ====================================================================== */
+
+@media (max-width: 720px) {
+  .app {
+    padding: 28px 16px 64px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .header-meta {
+    gap: 16px;
+    font-size: 15px;
+  }
+
+  .divider {
+    margin: 14px 0 20px;
+  }
+
+  .panel {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+
+  .panel-title {
+    margin-bottom: 14px;
+    font-size: 17px;
+  }
+
+  .slot {
+    height: 60px;
+    font-size: 26px;
+  }
+
+  .key {
+    height: 52px;
+    font-size: 22px;
+  }
+
+  .hint {
+    font-size: 14px;
+  }
+
+  .history {
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .history-row {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .history-index {
+    width: 30px;
+    font-size: 13px;
+  }
+
+  .history-guess {
+    font-size: 21px;
+    letter-spacing: 0.26em;
+    margin-right: -0.26em;
+  }
+
+  .history-result {
+    font-size: 25px;
+  }
+
+  .res-b {
+    margin-left: 8px;
+  }
+
+  .digit-grid {
+    gap: 7px;
+  }
+
+  .digit-mark {
+    border-radius: 10px;
+    font-size: 20px;
+  }
+
+  .pos-row {
+    grid-template-columns: 26px repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .pos-digit-label {
+    font-size: 14px;
+  }
+
+  .pos-cell {
+    height: 40px;
+    border-radius: 8px;
+  }
+
+  .overlay-card {
+    padding: 28px 22px 24px;
+  }
+
+  .result-answer {
+    font-size: 38px;
+  }
+
+  .result-stats {
+    gap: 24px;
+  }
+
+  .confirm-actions .btn-ghost,
+  .confirm-actions .btn-primary {
+    flex: 1 1 0;
+    padding: 0 12px;
+  }
+}
+
+/* ======================================================================
+ * 使用者要求減少動態效果
+ * ====================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }
