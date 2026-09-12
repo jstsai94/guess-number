@@ -1,5 +1,7 @@
 # 1A2B 猜數字
 
+[![建置與部署](https://github.com/jstsai94/guess-number/actions/workflows/deploy.yml/badge.svg)](https://github.com/jstsai94/guess-number/actions/workflows/deploy.yml)
+
 4 位不重複數字的猜數字遊戲。電腦出題，玩家猜，回饋 `xAyB`。
 桌機、平板、手機都能玩 —— 觸控裝置用頁面內建數字鍵盤，不會跳出系統鍵盤。
 
@@ -30,11 +32,21 @@ npm run bundle     # 建置 + 打包成單檔
 
 | 檔案 | 用途 |
 | --- | --- |
-| `docs/index.html` | GitHub Pages 的實際來源，也可以直接雙擊開啟 |
+| `docs/index.html` | 部署到 GitHub Pages 的內容，也可以直接雙擊開啟 |
 | `dist/artifact.html` | 給 Claude Artifact 用（發佈時平台會自己包外層骨架） |
 
-改完程式碼要更新線上版：跑 `npm run bundle`，然後 commit `docs/index.html` 並 push，
-GitHub Pages 會自動更新。
+兩者都不進版控，由 CI 產生。
+
+## 部署
+
+push 到 `main` 就會自動部署，不需要在本機跑任何指令：
+
+1. GitHub Actions 跑 `npm ci` → `npm run test:run` → `npm run bundle`
+2. **測試沒過就不會部署**
+3. 通過後把 `docs/` 發佈到 GitHub Pages
+
+workflow 見 [.github/workflows/deploy.yml](./.github/workflows/deploy.yml)，
+也可以在 Actions 頁面手動觸發。
 
 ## 架構
 

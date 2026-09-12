@@ -1,0 +1,63 @@
+name: 建置與部署
+
+on:
+  push:
+    branches: [main]
+  # 也可以在 Actions 頁面手動觸發
+  workflow_dispatch:
+
+# 部署到 GitHub Pages 所需的權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署；不取消進行中的那個，避免部署到一半被砍
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 測試與建置
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 安裝相依套件
+        run: npm ci
+
+      # 測試沒過就不會部署
+      - name: 單元測試
+        run: npm run test:run
+
+      # bundle 會先跑 tsc + vite build，再打包成單檔 docs/index.html
+      - name: 建置並打包成單檔
+        run: npm run bundle
+
+      - name: 設定 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 上傳 Pages 產物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4
