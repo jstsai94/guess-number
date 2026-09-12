@@ -250,11 +250,11 @@ describe('GameSession 多局並存（雙人對戰前置驗證）', () => {
     const right = fixedSession();
 
     left.notes.cycleMark('7');
-    left.notes.memo = '左邊的筆記';
+    left.notes.setPositionMark('7', 2, 'confirmed');
 
     expect(left.notes.getMark('7')).toBe('excluded');
     expect(right.notes.getMark('7')).toBe('unknown');
-    expect(right.notes.memo).toBe('');
+    expect(right.notes.getPositionMark('7', 2)).toBe('possible');
   });
 
   it('可指定 config 覆寫預設規則', () => {

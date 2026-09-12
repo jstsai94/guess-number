@@ -1,5 +1,5 @@
 /*
- * 桌機版樣式。固定寬度 960px，不做 RWD、不做斷點、不做深色主題。
+ * 桌機版樣式。固定寬度 1180px，不做 RWD、不做斷點、不做深色主題。
  */
 
 :root {
@@ -23,6 +23,11 @@
   --required-bg: #e3f6ea;
   --required-text: #147a3d;
   --required-line: #a9dfbf;
+  --impossible-bg: #eceef2;
+  --impossible-text: #9aa2ad;
+  --confirmed-bg: #e3f6ea;
+  --confirmed-text: #147a3d;
+  --confirmed-line: #a9dfbf;
   --error: #d92d20;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -36,15 +41,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 .app {
-  width: 960px;
+  width: 1180px;
   margin: 0 auto;
-  padding: 44px 0 96px;
+  padding: 52px 0 110px;
 }
 
 /* ---------- 按鈕 ---------- */
@@ -53,9 +58,9 @@ body {
 .btn-outline,
 .btn-ghost {
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
@@ -64,8 +69,8 @@ body {
   border: none;
   background: var(--accent);
   color: #fff;
-  padding: 0 22px;
-  height: 42px;
+  padding: 0 26px;
+  height: 50px;
 }
 
 .btn-primary:hover {
@@ -81,8 +86,8 @@ body {
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--text-soft);
-  padding: 0 16px;
-  height: 36px;
+  padding: 0 20px;
+  height: 44px;
   font-weight: 500;
 }
 
@@ -96,8 +101,8 @@ body {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  padding: 0 18px;
-  height: 42px;
+  padding: 0 22px;
+  height: 50px;
   font-weight: 500;
 }
 
@@ -121,7 +126,7 @@ body {
 
 .title {
   margin: 0;
-  font-size: 24px;
+  font-size: 31px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -129,9 +134,9 @@ body {
 .header-meta {
   display: flex;
   align-items: baseline;
-  gap: 18px;
+  gap: 22px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -142,11 +147,11 @@ body {
 .divider {
   height: 1px;
   background: var(--line);
-  margin: 16px 0 24px;
+  margin: 20px 0 28px;
 }
 
 .divider-tight {
-  margin: 18px 0 14px;
+  margin: 22px 0 16px;
 }
 
 /* ---------- 版面 ---------- */
@@ -161,13 +166,13 @@ body {
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 22px;
+  border-radius: 16px;
+  padding: 26px;
 }
 
 .panel-title {
-  margin: 0 0 16px;
-  font-size: 15px;
+  margin: 0 0 18px;
+  font-size: 19px;
   font-weight: 700;
 }
 
@@ -176,19 +181,19 @@ body {
 .input-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .digit {
-  width: 52px;
-  height: 52px;
+  width: 66px;
+  height: 66px;
   padding: 0;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
   color: var(--text);
   font-family: var(--mono);
-  font-size: 22px;
+  font-size: 29px;
   text-align: center;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -205,15 +210,15 @@ body {
 }
 
 .submit {
-  height: 52px;
-  margin-left: 6px;
-  padding: 0 26px;
+  height: 66px;
+  margin-left: 8px;
+  padding: 0 34px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--accent);
   color: #fff;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.12s ease;
@@ -229,18 +234,18 @@ body {
 }
 
 .hint {
-  margin: 12px 0 0;
+  margin: 14px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 15px;
 }
 
 .hint.is-error {
   color: var(--error);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .surrender-slot:not(:empty) {
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
 /* ---------- 歷史紀錄 ---------- */
@@ -248,8 +253,8 @@ body {
 .history {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 24px;
 }
 
 .history:empty {
@@ -259,10 +264,10 @@ body {
 .history-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 11px 16px;
+  gap: 18px;
+  padding: 14px 20px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--row-bg);
 }
 
@@ -272,14 +277,14 @@ body {
 }
 
 .history-index {
-  width: 30px;
+  width: 38px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .history-guess {
   font-family: var(--mono);
-  font-size: 17px;
+  font-size: 25px;
   letter-spacing: 0.34em;
   /* letter-spacing 會在末字後補間距，往回拉齊視覺重心 */
   margin-right: -0.34em;
@@ -288,34 +293,34 @@ body {
 .history-result {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 16px;
+  font-size: 30px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 .res-a {
   color: var(--a-color);
-  font-weight: 700;
 }
 
 .res-b {
-  margin-left: 4px;
+  margin-left: 10px;
   color: var(--b-color);
-  font-weight: 700;
 }
 
-/* ---------- 筆記板 ---------- */
+/* ---------- 筆記板：數字狀態列 ---------- */
 
 .digit-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: 9px;
 }
 
 .digit-mark {
   aspect-ratio: 1;
-  border-radius: 10px;
+  border-radius: 12px;
   font-family: var(--mono);
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
@@ -344,65 +349,117 @@ body {
   color: var(--required-text);
 }
 
+/* ---------- 筆記板：位置推理表 ---------- */
+
+.notes-section-title {
+  margin-top: 24px;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.pos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pos-row {
+  display: grid;
+  grid-template-columns: 34px repeat(4, 1fr);
+  gap: 5px;
+  align-items: center;
+}
+
+.pos-digit-label {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.pos-head-cell {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.pos-head {
+  margin-bottom: 1px;
+}
+
+.pos-cell {
+  height: 38px;
+  border-radius: 9px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.pos-cell.is-possible {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: transparent;
+}
+
+.pos-cell.is-possible:hover {
+  border-color: #b9c0cb;
+  background: #fafbfc;
+}
+
+.pos-cell.is-impossible {
+  border: 1px solid transparent;
+  background: var(--impossible-bg);
+  color: var(--impossible-text);
+}
+
+.pos-cell.is-confirmed {
+  border: 1px solid var(--confirmed-line);
+  background: var(--confirmed-bg);
+  color: var(--confirmed-text);
+}
+
+/* ---------- 圖例 ---------- */
+
 .legend {
   display: flex;
-  gap: 14px;
-  margin-top: 10px;
+  gap: 16px;
+  margin-top: 12px;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .legend-swatch {
-  width: 11px;
-  height: 11px;
-  border-radius: 3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
 }
 
-.legend-swatch.is-unknown {
+.legend-swatch.is-unknown,
+.legend-swatch.is-possible {
   border: 1px solid var(--line-strong);
   background: var(--surface);
 }
 
-.legend-swatch.is-excluded {
+.legend-swatch.is-excluded,
+.legend-swatch.is-impossible {
   background: var(--excluded-bg);
   border: 1px solid #dfe3e9;
 }
 
-.legend-swatch.is-required {
+.legend-swatch.is-required,
+.legend-swatch.is-confirmed {
   background: var(--required-bg);
   border: 1px solid var(--required-line);
-}
-
-.memo {
-  display: block;
-  width: 100%;
-  height: 62px;
-  margin-top: 16px;
-  padding: 10px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.5;
-  resize: none;
-}
-
-.memo::placeholder {
-  color: #b4bac4;
-}
-
-.memo:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* ---------- 統計區 ---------- */
@@ -411,7 +468,7 @@ body {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 15px;
   line-height: 2;
 }
 
@@ -441,16 +498,16 @@ body {
 }
 
 .overlay-card {
-  width: 340px;
-  padding: 30px 32px 26px;
-  border-radius: 18px;
+  width: 420px;
+  padding: 36px 38px 32px;
+  border-radius: 20px;
   background: var(--surface);
   text-align: center;
   box-shadow: 0 18px 48px rgba(20, 28, 40, 0.22);
 }
 
 .result-title {
-  font-size: 20px;
+  font-size: 25px;
   font-weight: 700;
 }
 
@@ -459,15 +516,15 @@ body {
 }
 
 .result-answer-label {
-  margin-top: 16px;
+  margin-top: 18px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .result-answer {
-  margin: 2px 0 20px;
+  margin: 4px 0 24px;
   font-family: var(--mono);
-  font-size: 34px;
+  font-size: 44px;
   font-weight: 700;
   letter-spacing: 0.28em;
   margin-right: -0.28em;
@@ -481,41 +538,41 @@ body {
 .result-stats {
   display: flex;
   justify-content: center;
-  gap: 28px;
-  margin-bottom: 22px;
+  gap: 34px;
+  margin-bottom: 26px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .result-stat {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 7px;
 }
 
 .result-stat-value {
   color: var(--text);
-  font-size: 16px;
+  font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
 
 /* ---------- 二次確認 ---------- */
 
 .confirm-card {
-  width: 360px;
-  padding: 28px 30px 22px;
+  width: 440px;
+  padding: 32px 34px 26px;
 }
 
 .confirm-title {
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1.5;
 }
 
 .confirm-message {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .confirm-message[hidden] {
@@ -525,6 +582,6 @@ body {
 .confirm-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 26px;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { GameNotes } from '../GameNotes';
 import { NOTE_DIGITS } from '../types';
 
-describe('GameNotes 數字標記', () => {
+describe('GameNotes 數字狀態列', () => {
   it('預設每個數字都是未定', () => {
     const notes = new GameNotes();
     for (const digit of NOTE_DIGITS) {
@@ -62,27 +62,67 @@ describe('GameNotes 數字標記', () => {
   });
 });
 
-describe('GameNotes 自由備註', () => {
-  it('預設為空字串，可讀寫', () => {
+describe('GameNotes 位置推理表', () => {
+  it('預設每一格都是可能', () => {
     const notes = new GameNotes();
-    expect(notes.memo).toBe('');
-    notes.memo = '2 一定在第三位';
-    expect(notes.memo).toBe('2 一定在第三位');
+    for (const digit of NOTE_DIGITS) {
+      for (let position = 0; position < 4; position += 1) {
+        expect(notes.getPositionMark(digit, position)).toBe('possible');
+      }
+    }
+  });
+
+  it('點擊循環：可能 → 不可能 → 確定 → 可能', () => {
+    const notes = new GameNotes();
+    expect(notes.cyclePositionMark('7', 2)).toBe('impossible');
+    expect(notes.cyclePositionMark('7', 2)).toBe('confirmed');
+    expect(notes.cyclePositionMark('7', 2)).toBe('possible');
+    expect(notes.cyclePositionMark('7', 2)).toBe('impossible');
+  });
+
+  it('每一格互相獨立：同數字不同位、同位不同數字都不受影響', () => {
+    const notes = new GameNotes();
+    notes.setPositionMark('7', 2, 'confirmed');
+
+    expect(notes.getPositionMark('7', 2)).toBe('confirmed');
+    expect(notes.getPositionMark('7', 0)).toBe('possible');
+    expect(notes.getPositionMark('7', 1)).toBe('possible');
+    expect(notes.getPositionMark('7', 3)).toBe('possible');
+    expect(notes.getPositionMark('8', 2)).toBe('possible');
+  });
+
+  it('setPositionMark 可直接指定狀態', () => {
+    const notes = new GameNotes();
+    notes.setPositionMark('0', 0, 'impossible');
+    expect(notes.getPositionMark('0', 0)).toBe('impossible');
+    notes.setPositionMark('0', 0, 'possible');
+    expect(notes.getPositionMark('0', 0)).toBe('possible');
+  });
+
+  it('與數字狀態列互不連動', () => {
+    const notes = new GameNotes();
+    notes.setMark('5', 'excluded');
+    expect(notes.getPositionMark('5', 0)).toBe('possible');
+
+    notes.setPositionMark('6', 1, 'confirmed');
+    expect(notes.getMark('6')).toBe('unknown');
   });
 });
 
 describe('GameNotes 重置', () => {
-  it('reset 清掉標記與備註', () => {
+  it('reset 同時清掉兩套標記', () => {
     const notes = new GameNotes();
     notes.setMark('1', 'excluded');
     notes.setMark('2', 'required');
-    notes.memo = '筆記';
+    notes.setPositionMark('3', 0, 'confirmed');
+    notes.setPositionMark('4', 3, 'impossible');
 
     notes.reset();
 
     expect(notes.getMark('1')).toBe('unknown');
     expect(notes.getMark('2')).toBe('unknown');
-    expect(notes.memo).toBe('');
+    expect(notes.getPositionMark('3', 0)).toBe('possible');
+    expect(notes.getPositionMark('4', 3)).toBe('possible');
   });
 
   it('兩份 GameNotes 互不干擾', () => {
@@ -90,9 +130,9 @@ describe('GameNotes 重置', () => {
     const b = new GameNotes();
 
     a.setMark('8', 'required');
-    a.memo = 'A';
+    a.setPositionMark('8', 1, 'confirmed');
 
     expect(b.getMark('8')).toBe('unknown');
-    expect(b.memo).toBe('');
+    expect(b.getPositionMark('8', 1)).toBe('possible');
   });
 });

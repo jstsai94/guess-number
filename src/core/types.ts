@@ -72,3 +72,6 @@ export type DigitMark = 'unknown' | 'excluded' | 'required';
 
 /** 筆記板可標記的十個數字。 */
 export const NOTE_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
+
+/** 位置推理表上「某個數字放在某一位」的標記狀態。 */
+export type PositionMark = 'possible' | 'impossible' | 'confirmed';

@@ -37,7 +37,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   const timerLabel = el('span', { class: 'meta-timer' });
 
   const header = el('header', { class: 'header' }, [
-    el('h1', { class: 'title', text: '2A2B 猜數字' }),
+    el('h1', { class: 'title', text: '1A2B 猜數字' }),
     el('div', { class: 'header-meta' }, [roundLabel, timerLabel]),
   ]);
 
@@ -58,7 +58,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   });
   surrenderButton.addEventListener('click', () => void handleSurrender());
 
-  const notesBoard = createNotesBoard(session.notes);
+  const notesBoard = createNotesBoard(session.notes, codeLength);
   const statsPanel = createStatsPanel();
 
   const leftColumn = el('section', { class: 'panel panel-left' }, [
@@ -91,10 +91,13 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     const issue = validateCode(code, session.config);
     if (issue !== null) {
       showError(describeIssue(issue));
+      // 數字重複時整排清掉重打，不必一格一格退
+      if (issue === 'duplicate-digit') resetInput();
       return;
     }
     if (session.hasGuessed(code)) {
       showError('這組數字已經猜過了');
+      resetInput();
       return;
     }
 
@@ -106,8 +109,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     }
 
     clearError();
-    input.clear();
-    input.focusFirst();
+    resetInput();
     render();
 
     const { A, B } = outcome.record.feedback;
@@ -170,6 +172,12 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   }
 
   // ---------- 渲染 ----------
+
+  /** 清空四格並把游標送回第一格。 */
+  function resetInput(): void {
+    input.clear();
+    input.focusFirst();
+  }
 
   function showError(message: string): void {
     hint.textContent = message;

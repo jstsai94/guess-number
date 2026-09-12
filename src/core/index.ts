@@ -12,6 +12,7 @@ export type {
   GameConfig,
   GameStatus,
   GuessRecord,
+  PositionMark,
   RejectReason,
   Rng,
   SubmitResult,
