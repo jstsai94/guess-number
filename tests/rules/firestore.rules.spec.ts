@@ -51,13 +51,15 @@ beforeEach(async () => {
 const as = (uid: string) => env.authenticatedContext(uid).firestore();
 
 /** 以「關閉規則」的權限準備好房間資料。 */
-async function seedRoom(opts: { guest?: boolean; hostCommitted?: boolean; guestCommitted?: boolean } = {}) {
+async function seedRoom(
+  opts: { guest?: boolean; hostCommitted?: boolean; guestCommitted?: boolean; guestLastSeenAgoMs?: number } = {},
+) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const f = ctx.firestore();
-    const player = (committed: boolean | undefined) => ({
+    const player = (committed: boolean | undefined, lastSeenAgoMs = 0) => ({
       commitHash: committed ? HASH : null,
       committedAt: committed ? Timestamp.now() : null,
-      lastSeen: Timestamp.now(),
+      lastSeen: Timestamp.fromMillis(Date.now() - lastSeenAgoMs),
       surrendered: false,
       expiresAt,
     });
@@ -69,7 +71,9 @@ async function seedRoom(opts: { guest?: boolean; hostCommitted?: boolean; guestC
       expiresAt,
     });
     await setDoc(doc(f, 'rooms', ROOM, 'players', HOST), player(opts.hostCommitted));
-    if (opts.guest) await setDoc(doc(f, 'rooms', ROOM, 'players', GUEST), player(opts.guestCommitted));
+    if (opts.guest) {
+      await setDoc(doc(f, 'rooms', ROOM, 'players', GUEST), player(opts.guestCommitted, opts.guestLastSeenAgoMs));
+    }
   });
 }
 
@@ -84,11 +88,18 @@ const newGuess = (from: string, to: string, guess: string) => ({
   expiresAt,
 });
 
-async function seedGuess(from: string, to: string, guess: string) {
+async function seedGuess(
+  from: string,
+  to: string,
+  guess: string,
+  createdAgoMs = 0,
+  feedback: { A: number; B: number } | null = null,
+) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'rooms', ROOM, 'guesses', `${from}_${guess}`), {
       ...newGuess(from, to, guess),
-      createdAt: Timestamp.now(),
+      createdAt: Timestamp.fromMillis(Date.now() - createdAgoMs),
+      feedback,
     });
   });
 }
@@ -237,7 +248,7 @@ describe('猜測', () => {
 describe('公開密碼', () => {
   it('只有本人能公開；寫入後不可修改；非成員讀不到', async () => {
     await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
-    const reveal = { code: '4721', salt: SALT, expiresAt };
+    const reveal = { code: '4721', salt: SALT, createdAt: serverTimestamp(), expiresAt };
 
     await assertFails(setDoc(doc(as(HOST), 'rooms', ROOM, 'reveals', GUEST), reveal));
     await assertSucceeds(setDoc(doc(as(GUEST), 'rooms', ROOM, 'reveals', GUEST), reveal));
@@ -249,7 +260,97 @@ describe('公開密碼', () => {
   it('公開的密碼與鹽必須格式正確', async () => {
     await seedRoom({ guest: true });
     const me = doc(as(GUEST), 'rooms', ROOM, 'reveals', GUEST);
-    await assertFails(setDoc(me, { code: '1123', salt: SALT, expiresAt }));
-    await assertFails(setDoc(me, { code: '4721', salt: 'short', expiresAt }));
+    await assertFails(setDoc(me, { code: '1123', salt: SALT, createdAt: serverTimestamp(), expiresAt }));
+    await assertFails(setDoc(me, { code: '4721', salt: 'short', createdAt: serverTimestamp(), expiresAt }));
+  });
+});
+
+describe('申訴：斷線、判定逾時、未公開密碼（伺服器驗證時間條件）', () => {
+  const claim = (type: string, against: string, guessId: string | null = null) => ({
+    type,
+    claimant: HOST,
+    against,
+    guessId,
+    createdAt: serverTimestamp(),
+    expiresAt,
+  });
+  const claimRef = (uid: string, id: string) => doc(as(uid), 'rooms', ROOM, 'claims', id);
+
+  async function seedReveal(uid: string, createdAgoMs: number) {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'rooms', ROOM, 'reveals', uid), {
+        code: uid === HOST ? '4721' : '0856',
+        salt: SALT,
+        createdAt: Timestamp.fromMillis(Date.now() - createdAgoMs),
+        expiresAt,
+      });
+    });
+  }
+
+  it('對手超過 60 秒沒有心跳，才能申訴斷線', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
+    await assertFails(setDoc(claimRef(HOST, `disconnect_${GUEST}`), claim('disconnect', GUEST)));
+
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true, guestLastSeenAgoMs: 120_000 });
+    await assertSucceeds(setDoc(claimRef(HOST, `disconnect_${GUEST}`), claim('disconnect', GUEST)));
+  });
+
+  it('不能申訴自己，也不能冒用別人的名義', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true, guestLastSeenAgoMs: 120_000 });
+    await assertFails(setDoc(claimRef(HOST, `disconnect_${HOST}`), claim('disconnect', HOST)));
+    await assertFails(setDoc(claimRef(HOST, `disconnect_${GUEST}`), { ...claim('disconnect', GUEST), claimant: GUEST }));
+    await assertFails(
+      setDoc(claimRef(STRANGER, `disconnect_${GUEST}`), { ...claim('disconnect', GUEST), claimant: STRANGER }),
+    );
+  });
+
+  it('自己的猜測超過 60 秒沒被判定，才能申訴判定逾時', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
+    await seedGuess(HOST, GUEST, '0123');
+    await assertFails(
+      setDoc(claimRef(HOST, `judge-timeout_${GUEST}`), claim('judge-timeout', GUEST, `${HOST}_0123`)),
+    );
+
+    await seedGuess(HOST, GUEST, '4567', 120_000);
+    await assertSucceeds(
+      setDoc(claimRef(HOST, `judge-timeout_${GUEST}`), claim('judge-timeout', GUEST, `${HOST}_4567`)),
+    );
+  });
+
+  it('已經判定過的猜測、不是自己的猜測，都不能拿來申訴判定逾時', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
+    await seedGuess(HOST, GUEST, '0123', 120_000, { A: 1, B: 1 });
+    await seedGuess(GUEST, HOST, '4567', 120_000);
+
+    await assertFails(
+      setDoc(claimRef(HOST, `judge-timeout_${GUEST}`), claim('judge-timeout', GUEST, `${HOST}_0123`)),
+    );
+    await assertFails(
+      setDoc(claimRef(HOST, `judge-timeout_${GUEST}`), claim('judge-timeout', GUEST, `${GUEST}_4567`)),
+    );
+  });
+
+  it('自己公開超過 60 秒而對手仍未公開，才能申訴未公開密碼', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
+    await seedReveal(HOST, 0);
+    await assertFails(setDoc(claimRef(HOST, `no-reveal_${GUEST}`), claim('no-reveal', GUEST)));
+
+    await seedReveal(HOST, 120_000);
+    await assertSucceeds(setDoc(claimRef(HOST, `no-reveal_${GUEST}`), claim('no-reveal', GUEST)));
+  });
+
+  it('對手已經公開，就不能申訴未公開', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true });
+    await seedReveal(HOST, 120_000);
+    await seedReveal(GUEST, 0);
+    await assertFails(setDoc(claimRef(HOST, `no-reveal_${GUEST}`), claim('no-reveal', GUEST)));
+  });
+
+  it('申訴寫入後不可修改或刪除', async () => {
+    await seedRoom({ guest: true, hostCommitted: true, guestCommitted: true, guestLastSeenAgoMs: 120_000 });
+    const ref = claimRef(HOST, `disconnect_${GUEST}`);
+    await assertSucceeds(setDoc(ref, claim('disconnect', GUEST)));
+    await assertFails(updateDoc(ref, { type: 'judge-timeout' }));
+    await assertFails(deleteDoc(ref));
   });
 });

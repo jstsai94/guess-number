@@ -157,11 +157,58 @@ service cloud.firestore {
         // 不限定「結束後」才能寫：提早公開只會讓對手知道自己的密碼，傷害的是自己。
         allow create: if isMember(roomId)
           && uid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['code', 'salt', 'expiresAt'])
+          && request.resource.data.keys().hasOnly(['code', 'salt', 'createdAt', 'expiresAt'])
           && isValidCode(request.resource.data.code)
           && request.resource.data.salt is string
           && request.resource.data.salt.matches('^[0-9a-f]{64}$')
+          && request.resource.data.createdAt == request.time
           && sameExpiry(roomId);
+      }
+
+      // 申訴：斷線、判定逾時、未公開密碼。
+      //
+      // 這三種「逾時」如果交給雙方裝置各自用本機時鐘判斷，剛好卡在臨界點時兩邊可能算出不同結果。
+      // 改由察覺的一方寫入申訴，伺服器以 request.time 驗證時間條件後才接受；
+      // 申訴寫入後不可修改，雙方都依它判斷勝負，結果必定一致。
+      match /claims/{claimId} {
+        function docPath(kind, id) {
+          return /databases/$(database)/documents/rooms/$(roomId)/$(kind)/$(id);
+        }
+
+        function staleSince(ts) {
+          return request.time > ts + duration.value(60, 's');
+        }
+
+        allow read: if isMember(roomId);
+
+        allow create: if isMember(roomId)
+          && request.resource.data.keys().hasOnly(['type', 'claimant', 'against', 'guessId', 'createdAt', 'expiresAt'])
+          && request.resource.data.claimant == request.auth.uid
+          && request.resource.data.against == opponentOf(roomId)
+          && claimId == request.resource.data.type + '_' + request.resource.data.against
+          && request.resource.data.createdAt == request.time
+          && sameExpiry(roomId)
+          && (
+            // 斷線：對手最後一次心跳超過 60 秒
+            (request.resource.data.type == 'disconnect'
+              && request.resource.data.guessId == null
+              && staleSince(get(docPath('players', opponentOf(roomId))).data.lastSeen))
+            ||
+            // 判定逾時：自己的某一筆猜測送出超過 60 秒，對手仍未判定
+            (request.resource.data.type == 'judge-timeout'
+              && request.resource.data.guessId is string
+              && get(docPath('guesses', request.resource.data.guessId)).data.from == request.auth.uid
+              && get(docPath('guesses', request.resource.data.guessId)).data.to == opponentOf(roomId)
+              && get(docPath('guesses', request.resource.data.guessId)).data.feedback == null
+              && staleSince(get(docPath('guesses', request.resource.data.guessId)).data.createdAt))
+            ||
+            // 未公開密碼：自己已經公開超過 60 秒，對手仍未公開
+            (request.resource.data.type == 'no-reveal'
+              && request.resource.data.guessId == null
+              && exists(docPath('reveals', request.auth.uid))
+              && !exists(docPath('reveals', opponentOf(roomId)))
+              && staleSince(get(docPath('reveals', request.auth.uid)).data.createdAt))
+          );
       }
     }
   }

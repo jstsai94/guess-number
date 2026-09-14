@@ -229,7 +229,13 @@ export async function publishReveal(
   uid: string,
   reveal: { readonly code: string; readonly salt: string; readonly expiresAt: Timestamp },
 ): Promise<void> {
-  await setDoc(revealRef(db, roomCode, uid), reveal);
+  await setDoc(revealRef(db, roomCode, uid), {
+    code: reveal.code,
+    salt: reveal.salt,
+    // 公開時間：對手若 60 秒內沒有公開，可以據此提出「未公開密碼」申訴
+    createdAt: serverTimestamp(),
+    expiresAt: reveal.expiresAt,
+  });
 }
 
 // ---------- 監聽 ----------
