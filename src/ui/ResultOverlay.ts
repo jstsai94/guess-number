@@ -8,22 +8,35 @@ export interface ResultInfo {
   answer: string;
 }
 
+export interface ResultOverlayOptions {
+  /** 以相同難度再玩一局。 */
+  onRestart: () => void;
+  /** 回到模式選擇畫面。 */
+  onMenu: () => void;
+}
+
 export interface ResultOverlayHandle {
   readonly el: HTMLElement;
   show(info: ResultInfo): void;
   hide(): void;
 }
 
-/** 結算覆蓋層：顯示花了幾次、用時多久、答案，以及「再玩一次」。 */
-export function createResultOverlay(options: { onRestart: () => void }): ResultOverlayHandle {
+/** 結算覆蓋層：顯示花了幾次、用時多久、答案，以及「再玩一次」與「回到選單」。 */
+export function createResultOverlay(options: ResultOverlayOptions): ResultOverlayHandle {
   const titleEl = el('div', { class: 'result-title' });
   const answerLabel = el('div', { class: 'result-answer-label' });
   const answerEl = el('div', { class: 'result-answer' });
   const guessCountEl = el('strong', { class: 'result-stat-value' });
   const elapsedEl = el('strong', { class: 'result-stat-value' });
   const restartButton = el('button', { class: 'btn-primary btn-block', type: 'button', text: '再玩一次' });
+  const menuButton = el('button', {
+    class: 'btn-ghost btn-block result-menu',
+    type: 'button',
+    text: '回到選單',
+  });
 
   restartButton.addEventListener('click', () => options.onRestart());
+  menuButton.addEventListener('click', () => options.onMenu());
 
   const card = el('div', { class: 'overlay-card' }, [
     titleEl,
@@ -34,6 +47,7 @@ export function createResultOverlay(options: { onRestart: () => void }): ResultO
       el('div', { class: 'result-stat' }, [el('span', { text: '用時' }), elapsedEl]),
     ]),
     restartButton,
+    menuButton,
   ]);
 
   const overlay = el('div', { class: 'overlay', hidden: true }, [card]);

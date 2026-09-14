@@ -6,14 +6,17 @@ export interface StatsPanelHandle {
   render(stats: Stats): void;
 }
 
-/** 統計區：上方一條分隔線，下面三行左右對齊的小字。 */
-export function createStatsPanel(): StatsPanelHandle {
+/**
+ * 統計區：上方一條分隔線，一行小字標示是哪個難度的統計，下面三行左右對齊的小字。
+ */
+export function createStatsPanel(caption: string): StatsPanelHandle {
   const totalValue = el('span', { class: 'stat-value' });
   const winsValue = el('span', { class: 'stat-value' });
   const bestValue = el('span', { class: 'stat-value' });
 
   const root = el('div', { class: 'stats' }, [
     el('div', { class: 'divider divider-tight' }),
+    el('div', { class: 'stats-caption', text: caption }),
     row('總局數', totalValue),
     row('勝場', winsValue),
     row('最佳紀錄', bestValue),

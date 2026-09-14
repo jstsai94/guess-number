@@ -14,6 +14,8 @@ export interface GuessInputHandle {
   clear(): void;
   /** 把編輯位置移回第一格。 */
   focusFirst(): void;
+  /** 把焦點放回目前正在編輯的格子，不改變編輯位置。 */
+  focusActive(): void;
   setEnabled(enabled: boolean): void;
   /** 由外層把實體鍵盤事件轉進來；有處理到就回傳 true。 */
   handleKey(event: KeyboardEvent): boolean;
@@ -147,6 +149,10 @@ export function createGuessInput(options: GuessInputOptions): GuessInputHandle {
 
     focusFirst(): void {
       setActive(0);
+    },
+
+    focusActive(): void {
+      slots[active]?.focus();
     },
 
     setEnabled(enabled: boolean): void {

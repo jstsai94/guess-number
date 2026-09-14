@@ -694,6 +694,102 @@ button:focus-visible {
   margin-top: 26px;
 }
 
+/* ---------- 頂部：暫停按鈕 ---------- */
+
+.btn-small {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 15px;
+}
+
+/* ---------- 暫停畫面 ---------- */
+
+/* 暫停時必須完全遮住棋盤，否則暫停就等於免費的思考時間 */
+.overlay-pause {
+  background: var(--bg);
+}
+
+.pause-card {
+  max-width: 360px;
+}
+
+.pause-title {
+  margin-bottom: 22px;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+/* ---------- 結算：回到選單 ---------- */
+
+.result-menu {
+  margin-top: 8px;
+}
+
+/* ---------- 統計區：難度標示 ---------- */
+
+.stats-caption {
+  margin-bottom: 4px;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---------- 模式選擇畫面 ---------- */
+
+.menu {
+  max-width: 760px;
+}
+
+.menu-header {
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.menu-section-title {
+  margin: 0 0 14px;
+  color: var(--text-soft);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 26px 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.mode-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.mode-card-label {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.mode-card-desc {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
 /* ======================================================================
  * 觸控裝置：顯示頁面內建數字鍵盤，收掉行內送出按鈕
  * ====================================================================== */
@@ -890,6 +986,18 @@ button:focus-visible {
   .confirm-actions .btn-primary {
     flex: 1 1 0;
     padding: 0 12px;
+  }
+
+  .menu-header {
+    margin-bottom: 24px;
+  }
+
+  .mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mode-card {
+    padding: 20px 18px;
   }
 }
 
