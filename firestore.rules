@@ -1,0 +1,168 @@
+rules_version = '2';
+
+// 1A2B 連線對戰的安全規則。設計說明見 SPEC.md 第 8 節。
+//
+// 原則：
+// - 只有登入（匿名）的使用者可以存取
+// - 房間的子集合只有房主與對手可以讀寫
+// - 資料庫永遠不存明文密碼；密碼只在結束後由本人公開
+// - 所有時間一律使用伺服器時間（request.time）
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomPath(roomId) {
+      return /databases/$(database)/documents/rooms/$(roomId);
+    }
+
+    function room(roomId) {
+      return get(roomPath(roomId)).data;
+    }
+
+    function isMember(roomId) {
+      let r = room(roomId);
+      return signedIn() && (request.auth.uid == r.hostUid || request.auth.uid == r.guestUid);
+    }
+
+    function opponentOf(roomId) {
+      let r = room(roomId);
+      return request.auth.uid == r.hostUid ? r.guestUid : r.hostUid;
+    }
+
+    function committed(roomId, uid) {
+      let path = /databases/$(database)/documents/rooms/$(roomId)/players/$(uid);
+      return uid != null && exists(path) && get(path).data.commitHash != null;
+    }
+
+    // 4 碼、全為數字、沒有重複的數字（RE2 不支援反向參照，所以逐一檢查每個數字）
+    function isValidCode(code) {
+      return code is string
+        && code.matches('^[0-9]{4}$')
+        && !code.matches('.*0.*0.*') && !code.matches('.*1.*1.*')
+        && !code.matches('.*2.*2.*') && !code.matches('.*3.*3.*')
+        && !code.matches('.*4.*4.*') && !code.matches('.*5.*5.*')
+        && !code.matches('.*6.*6.*') && !code.matches('.*7.*7.*')
+        && !code.matches('.*8.*8.*') && !code.matches('.*9.*9.*');
+    }
+
+    // 子集合文件都帶著房間的 expiresAt，讓 TTL 能一併清除
+    function sameExpiry(roomId) {
+      return request.resource.data.expiresAt == room(roomId).expiresAt;
+    }
+
+    match /rooms/{roomId} {
+      // 房間本身沒有機密（只有雙方 uid 與時間），任何登入者都能讀單一房間，
+      // 才能分辨「找不到房號」與「房間已滿」；不允許列出所有房間
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && roomId.matches('^[0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['mode', 'hostUid', 'guestUid', 'createdAt', 'expiresAt'])
+        && request.resource.data.mode == 'mutual'
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.guestUid == null
+        && request.resource.data.createdAt == request.time
+        // 允許用戶端時鐘有 ±1 小時誤差
+        && request.resource.data.expiresAt > request.time + duration.value(23, 'h')
+        && request.resource.data.expiresAt < request.time + duration.value(25, 'h');
+
+      // 加入：只能把自己寫成對手，而且原本沒有人、房間尚未過期
+      allow update: if signedIn()
+        && resource.data.guestUid == null
+        && resource.data.hostUid != request.auth.uid
+        && request.time < resource.data.expiresAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestUid'])
+        && request.resource.data.guestUid == request.auth.uid;
+
+      // 取消：房主在還沒有人加入前可以刪除房間
+      allow delete: if signedIn()
+        && resource.data.hostUid == request.auth.uid
+        && resource.data.guestUid == null;
+
+      match /players/{uid} {
+        allow read: if isMember(roomId);
+
+        allow create: if isMember(roomId)
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['commitHash', 'committedAt', 'lastSeen', 'surrendered', 'expiresAt'])
+          && request.resource.data.commitHash == null
+          && request.resource.data.committedAt == null
+          && request.resource.data.lastSeen == request.time
+          && request.resource.data.surrendered == false
+          && sameExpiry(roomId);
+
+        allow update: if isMember(roomId)
+          && uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['commitHash', 'committedAt', 'lastSeen', 'surrendered'])
+          && request.resource.data.lastSeen == request.time
+          && (
+            // 設定雜湊：只能從空的設成 64 位十六進位，只有一次機會
+            (resource.data.commitHash == null
+              && request.resource.data.commitHash is string
+              && request.resource.data.commitHash.matches('^[0-9a-f]{64}$')
+              && request.resource.data.committedAt == request.time)
+            ||
+            // 其他更新（心跳、放棄）不得動到雜湊
+            (request.resource.data.commitHash == resource.data.commitHash
+              && request.resource.data.committedAt == resource.data.committedAt)
+          )
+          // 放棄之後不能反悔
+          && (resource.data.surrendered == false || request.resource.data.surrendered == true);
+      }
+
+      match /guesses/{guessId} {
+        allow read: if isMember(roomId);
+
+        allow create: if isMember(roomId)
+          && request.resource.data.keys().hasOnly(['from', 'to', 'index', 'guess', 'createdAt', 'feedback', 'judgedAt', 'expiresAt'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to == opponentOf(roomId)
+          && isValidCode(request.resource.data.guess)
+          // 文件 ID 固定為「猜的人_猜測」，同一組不可能被猜兩次
+          && guessId == request.auth.uid + '_' + request.resource.data.guess
+          && request.resource.data.index is int
+          && request.resource.data.index >= 1
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.feedback == null
+          && request.resource.data.judgedAt == null
+          && sameExpiry(roomId)
+          // 雙方都設定好密碼才能開始猜
+          && committed(roomId, request.auth.uid)
+          && committed(roomId, opponentOf(roomId));
+
+        // 判定：只有密碼持有者能寫、只能寫一次，而且必須是合理的 xAyB
+        allow update: if isMember(roomId)
+          && resource.data.to == request.auth.uid
+          && resource.data.feedback == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feedback', 'judgedAt'])
+          && request.resource.data.feedback.keys().hasOnly(['A', 'B'])
+          && request.resource.data.feedback.A is int
+          && request.resource.data.feedback.B is int
+          && request.resource.data.feedback.A >= 0
+          && request.resource.data.feedback.B >= 0
+          && request.resource.data.feedback.A + request.resource.data.feedback.B <= 4
+          && !(request.resource.data.feedback.A == 3 && request.resource.data.feedback.B == 1)
+          && request.resource.data.judgedAt == request.time;
+      }
+
+      match /reveals/{uid} {
+        allow read: if isMember(roomId);
+
+        // 只有本人能公開自己的密碼；寫入後不可修改或刪除（沒有 update / delete 規則）。
+        // 不限定「結束後」才能寫：提早公開只會讓對手知道自己的密碼，傷害的是自己。
+        allow create: if isMember(roomId)
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['code', 'salt', 'expiresAt'])
+          && isValidCode(request.resource.data.code)
+          && request.resource.data.salt is string
+          && request.resource.data.salt.matches('^[0-9a-f]{64}$')
+          && sameExpiry(roomId);
+      }
+    }
+  }
+}

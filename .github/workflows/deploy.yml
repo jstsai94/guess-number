@@ -50,9 +50,35 @@ jobs:
         with:
           path: docs
 
+  rules:
+    name: 安全規則測試
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取出程式碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Firestore 模擬器需要 Java
+      - name: 安裝 Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: 安裝相依套件
+        run: npm ci
+
+      - name: 在 Firestore 模擬器上跑安全規則測試
+        run: npx -y firebase-tools@latest emulators:exec --only firestore --project demo-guess-number "npm run test:rules"
+
   deploy:
     name: 部署到 GitHub Pages
-    needs: build
+    needs: [build, rules]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
