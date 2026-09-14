@@ -19,7 +19,7 @@ import type { Feedback } from '../core';
 /**
  * 連線對戰房間的 Firestore 操作。資料結構見 SPEC.md 第 8 節，權限見 firestore.rules。
  *
- * 這裡只負責「讀寫資料」，不做勝負判斷（那在 core/versus.ts）。
+ * 這裡只負責「讀寫資料」，不做勝負判斷（那在 core/versus.ts 與 online/match.ts）。
  */
 
 const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
@@ -57,10 +57,22 @@ export interface GuessDoc {
 export interface RevealDoc {
   readonly code: string;
   readonly salt: string;
+  readonly createdAt: Timestamp | null;
   readonly expiresAt: Timestamp;
 }
 
-/** 房間的完整即時狀態，由四個監聽合併而成。 */
+export type ClaimType = 'disconnect' | 'judge-timeout' | 'no-reveal';
+
+export interface ClaimDoc {
+  readonly type: ClaimType;
+  readonly claimant: string;
+  readonly against: string;
+  readonly guessId: string | null;
+  readonly createdAt: Timestamp | null;
+  readonly expiresAt: Timestamp;
+}
+
+/** 房間的完整即時狀態，由五個監聽合併而成。 */
 export interface RoomState {
   readonly roomCode: string;
   /** 房間被刪除（例如房主取消）時為 null。 */
@@ -68,6 +80,8 @@ export interface RoomState {
   readonly players: ReadonlyMap<string, PlayerDoc>;
   readonly guesses: ReadonlyArray<GuessDoc & { readonly id: string }>;
   readonly reveals: ReadonlyMap<string, RevealDoc>;
+  /** 以文件 ID（類型_被申訴者）為鍵。 */
+  readonly claims: ReadonlyMap<string, ClaimDoc>;
 }
 
 export type RoomErrorCode = 'not-found' | 'full' | 'expired' | 'own-room' | 'no-code-available';
@@ -88,9 +102,13 @@ const roomRef = (db: Firestore, roomCode: string) => doc(db, 'rooms', roomCode);
 const playerRef = (db: Firestore, roomCode: string, uid: string) => doc(db, 'rooms', roomCode, 'players', uid);
 const guessRef = (db: Firestore, roomCode: string, id: string) => doc(db, 'rooms', roomCode, 'guesses', id);
 const revealRef = (db: Firestore, roomCode: string, uid: string) => doc(db, 'rooms', roomCode, 'reveals', uid);
+const claimRef = (db: Firestore, roomCode: string, id: string) => doc(db, 'rooms', roomCode, 'claims', id);
 
 /** 猜測文件的 ID 固定為「猜的人_猜測」，資料庫層級就不可能重複猜同一組。 */
 export const guessIdOf = (uid: string, guess: string): string => `${uid}_${guess}`;
+
+/** 申訴文件的 ID 固定為「類型_被申訴者」，同一種申訴對同一人只會有一筆。 */
+export const claimIdOf = (type: ClaimType, against: string): string => `${type}_${against}`;
 
 // 伺服器時間在本機寫入尚未確認前以估計值呈現，避免畫面拿到 null
 const readData = <T>(snap: DocumentSnapshot | QueryDocumentSnapshot): T =>
@@ -238,10 +256,33 @@ export async function publishReveal(
   });
 }
 
+export interface NewClaim {
+  readonly type: ClaimType;
+  readonly claimant: string;
+  readonly against: string;
+  readonly guessId: string | null;
+  readonly expiresAt: Timestamp;
+}
+
+/**
+ * 提出申訴。時間條件由安全規則以伺服器時間驗證；
+ * 條件還沒成立時寫入會被拒絕，呼叫端稍後再試即可。
+ */
+export async function writeClaim(db: Firestore, roomCode: string, claim: NewClaim): Promise<void> {
+  await setDoc(claimRef(db, roomCode, claimIdOf(claim.type, claim.against)), {
+    type: claim.type,
+    claimant: claim.claimant,
+    against: claim.against,
+    guessId: claim.guessId,
+    createdAt: serverTimestamp(),
+    expiresAt: claim.expiresAt,
+  });
+}
+
 // ---------- 監聽 ----------
 
 /**
- * 監聽房間的完整狀態。四個監聽都收到第一次資料後才開始回呼，避免畫面閃爍。
+ * 監聽房間的完整狀態。五個監聽都收到第一次資料後才開始回呼，避免畫面閃爍。
  * 回傳的函式用來停止監聽。
  */
 export function watchRoom(
@@ -254,11 +295,14 @@ export function watchRoom(
   let players: Map<string, PlayerDoc> | undefined;
   let guesses: Array<GuessDoc & { id: string }> | undefined;
   let reveals: Map<string, RevealDoc> | undefined;
+  let claims: Map<string, ClaimDoc> | undefined;
 
   const emit = (): void => {
-    if (room === undefined || !players || !guesses || !reveals) return;
-    onChange({ roomCode, room, players, guesses, reveals });
+    if (room === undefined || !players || !guesses || !reveals || !claims) return;
+    onChange({ roomCode, room, players, guesses, reveals, claims });
   };
+
+  const sub = (name: string) => collection(db, 'rooms', roomCode, name);
 
   const unsubscribes = [
     onSnapshot(
@@ -270,7 +314,7 @@ export function watchRoom(
       onError,
     ),
     onSnapshot(
-      collection(db, 'rooms', roomCode, 'players'),
+      sub('players'),
       (snap) => {
         players = new Map(snap.docs.map((d) => [d.id, readData<PlayerDoc>(d)]));
         emit();
@@ -278,7 +322,7 @@ export function watchRoom(
       onError,
     ),
     onSnapshot(
-      collection(db, 'rooms', roomCode, 'guesses'),
+      sub('guesses'),
       (snap) => {
         guesses = snap.docs.map((d) => ({ id: d.id, ...readData<GuessDoc>(d) }));
         emit();
@@ -286,9 +330,17 @@ export function watchRoom(
       onError,
     ),
     onSnapshot(
-      collection(db, 'rooms', roomCode, 'reveals'),
+      sub('reveals'),
       (snap) => {
         reveals = new Map(snap.docs.map((d) => [d.id, readData<RevealDoc>(d)]));
+        emit();
+      },
+      onError,
+    ),
+    onSnapshot(
+      sub('claims'),
+      (snap) => {
+        claims = new Map(snap.docs.map((d) => [d.id, readData<ClaimDoc>(d)]));
         emit();
       },
       onError,
