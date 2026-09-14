@@ -14,7 +14,7 @@ export interface Feedback {
   readonly B: number;
 }
 
-/** 一局遊戲的規則設定。目前只有標準模式，未來惡魔模式可沿用同一組欄位。 */
+/** 一局遊戲的規則設定。一般模式與惡魔模式共用同一組欄位，差別只在 Codemaker 的實作。 */
 export interface GameConfig {
   /** 密碼長度，預設 4。 */
   readonly codeLength: number;
@@ -48,7 +48,9 @@ export type RejectReason =
   /** 這組數字先前已經猜過 */
   | 'duplicate'
   /** 這一局已經結束（獲勝或放棄） */
-  | 'finished';
+  | 'finished'
+  /** 這一局暫停中，暫停期間不接受任何猜測 */
+  | 'paused';
 
 /** submitGuess 的回傳值。被擋下時不計次。 */
 export type SubmitResult =

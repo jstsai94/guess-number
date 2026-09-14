@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { generateCode, isValidCode, validateCode } from '../codeGenerator';
+import { allCodes, generateCode, isValidCode, validateCode } from '../codeGenerator';
 import { DEFAULT_CONFIG } from '../types';
-import { mulberry32, seededRng } from './helpers';
+import { allValidCodes, mulberry32, seededRng } from './helpers';
 
 describe('isValidCode', () => {
   it('接受 4 碼不重複的數字，首位為 0 也合法', () => {
@@ -139,5 +139,40 @@ describe('generateCode', () => {
     const code = generateCode({ codeLength: 12, allowDuplicateDigits: true });
     expect(code).toHaveLength(12);
     expect(/^\d{12}$/.test(code)).toBe(true);
+  });
+});
+
+describe('allCodes', () => {
+  it('預設規則共 5040 組，全部合法且沒有重複', () => {
+    const codes = allCodes();
+    expect(codes).toHaveLength(5040);
+    expect(new Set(codes).size).toBe(5040);
+    expect(codes.every((c) => isValidCode(c))).toBe(true);
+  });
+
+  it('依字典序排列：第一組 0123、最後一組 9876', () => {
+    const codes = allCodes();
+    expect(codes[0]).toBe('0123');
+    expect(codes.at(-1)).toBe('9876');
+    expect([...codes].sort()).toEqual(codes);
+  });
+
+  it('與測試輔助函式列舉的結果完全一致', () => {
+    expect(allCodes()).toEqual(allValidCodes());
+  });
+
+  it('其他長度：3 碼不重複共 720 組', () => {
+    expect(allCodes({ codeLength: 3, allowDuplicateDigits: false })).toHaveLength(720);
+  });
+
+  it('允許重複時，4 碼共 10000 組', () => {
+    const codes = allCodes({ codeLength: 4, allowDuplicateDigits: true });
+    expect(codes).toHaveLength(10000);
+    expect(codes[0]).toBe('0000');
+    expect(codes.at(-1)).toBe('9999');
+  });
+
+  it('不允許重複時長度超過 10 會拋出錯誤', () => {
+    expect(() => allCodes({ codeLength: 11, allowDuplicateDigits: false })).toThrow();
   });
 });

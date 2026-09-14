@@ -31,6 +31,48 @@ export function isValidCode(code: string, config: GameConfig = DEFAULT_CONFIG): 
 }
 
 /**
+ * 依字典序列舉所有合法密碼。
+ *
+ * 惡魔模式以此作為起始的候選答案集合。
+ * 預設規則（4 碼、不重複）共 10 × 9 × 8 × 7 = 5040 組，第一組是 "0123"。
+ */
+export function allCodes(config: GameConfig = DEFAULT_CONFIG): Code[] {
+  const { codeLength, allowDuplicateDigits } = config;
+
+  if (codeLength < 0) {
+    throw new Error(`allCodes: codeLength 不可為負數（收到 ${codeLength}）`);
+  }
+  if (!allowDuplicateDigits && codeLength > DIGITS.length) {
+    throw new Error(
+      `allCodes: 不允許重複時 codeLength 最多為 ${DIGITS.length}（收到 ${codeLength}）`,
+    );
+  }
+
+  const out: Code[] = [];
+  const used = new Array<boolean>(DIGITS.length).fill(false);
+
+  const walk = (prefix: string): void => {
+    if (prefix.length === codeLength) {
+      out.push(prefix);
+      return;
+    }
+    for (let i = 0; i < DIGITS.length; i += 1) {
+      if (allowDuplicateDigits) {
+        walk(prefix + DIGITS[i]);
+        continue;
+      }
+      if (used[i]) continue;
+      used[i] = true;
+      walk(prefix + DIGITS[i]);
+      used[i] = false;
+    }
+  };
+
+  walk('');
+  return out;
+}
+
+/**
  * 隨機產生一組合法密碼。
  *
  * rng 可注入，預設使用 Math.random；測試時傳入決定性的 rng 即可得到可預期的輸出。
@@ -66,8 +108,12 @@ export function generateCode(config: GameConfig = DEFAULT_CONFIG, rng: Rng = Mat
   return pool.slice(0, codeLength).join('');
 }
 
-/** 將 rng 的 [0,1) 轉成 [0, size) 的整數，並夾住邊界以防 rng 回傳 1。 */
-function pickIndex(rng: Rng, size: number): number {
+/**
+ * 將 rng 的 [0,1) 轉成 [0, size) 的整數，並夾住邊界以防 rng 回傳 1。
+ *
+ * core 內部共用（惡魔模式挑選分組也用它），不從 index.ts 對外匯出。
+ */
+export function pickIndex(rng: Rng, size: number): number {
   const raw = Math.floor(rng() * size);
   if (raw < 0) return 0;
   if (raw >= size) return size - 1;

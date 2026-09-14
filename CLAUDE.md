@@ -1,6 +1,6 @@
 # CLAUDE.md — 本專案工作守則
 
-專案：1A2B 猜數字（桌機版）
+專案：1A2B 猜數字
 規格唯一來源：[SPEC.md](./SPEC.md)
 
 ---
@@ -19,7 +19,7 @@
 
 ## 架構紀律
 
-本專案未來要擴充「惡魔模式」與「雙人對戰」，所有設計都必須替這兩件事留路。
+本專案支援多種出題方式（一般、惡魔、連線對戰），所有設計都必須讓出題方式可以抽換。
 
 ### 1. 出題邏輯必須可抽換
 
@@ -33,44 +33,54 @@ interface Codemaker {
 }
 ```
 
-- 本次只實作 `LocalRandomCodemaker`（開局隨機抽一組答案，之後不變）
-- 未來的惡魔模式、雙人對戰各自提供新的 `Codemaker` 實作，
-  `GameSession` 與 UI **都不需要修改**
+實作：
+
+- `LocalRandomCodemaker` — 一般模式：開局隨機抽一組答案，之後不變
+- `DevilCodemaker` — 惡魔模式：不預先決定答案，每次保留最大的候選分組
+- 連線對戰的實作（對手裝置判定、伺服器判定）放在 `src/online/`，**不放進 `core`**
+
+`GameSession` 與 UI 不需要知道用的是哪一種 Codemaker。
+
+> 第二期 C 階段會把三個方法改成**非同步**（回傳 `Promise`），以支援網路判定。
+> 方法仍然只有三個。C 完成前，維持上面的同步簽名。
 
 ### 2. UI 層絕對不可以直接讀取答案
 
 - UI 只拿得到 `GameSession`，拿不到 `Codemaker`
 - `GameSession.getAnswer()` 在 `status === 'playing'` 時**一律回傳 `null`**
-- `LocalRandomCodemaker` 的答案存在 JS 私有欄位 `#answer`，
+- Codemaker 的答案與候選一律存在 JS 私有欄位（`#answer`、`#candidates`），
   即使 `as any` 也讀不到 —— 這是刻意的，不要改成一般欄位
 
 ### 3. 「一局遊戲」是可以同時存在多份的資料結構
 
-- 一局 = 一個 `GameSession` 實例
+- 一局 = 一個 `GameSession` 實例（含筆記、暫停狀態）
 - **禁止**出現 `currentAnswer`、`guessHistory`、`currentGame` 這類模組層級的可變狀態
-- 未來對戰模式畫面上會同時有兩局，任何「只能有一局」的假設都是 bug
+- 對戰模式畫面上會同時有兩局，任何「只能有一局」的假設都是 bug
 
 ### 4. 目錄職責
 
 ```
 src/
-├─ core/              純邏輯，禁止 import 任何 DOM API
+├─ core/              純邏輯，禁止 import 任何 DOM API 或 Firebase
 │  ├─ types.ts               型別與預設設定
 │  ├─ Codemaker.ts           出題者介面（唯一抽換點）
 │  ├─ judge.ts               純函式判定 xAyB
-│  ├─ codeGenerator.ts       產生答案 + 合法性檢查
-│  ├─ LocalRandomCodemaker.ts
-│  ├─ GameSession.ts         一局遊戲
+│  ├─ codeGenerator.ts       產生答案、列舉所有答案、合法性檢查
+│  ├─ LocalRandomCodemaker.ts  一般模式
+│  ├─ DevilCodemaker.ts      惡魔模式
+│  ├─ GameNotes.ts           一局的筆記狀態
+│  ├─ GameSession.ts         一局遊戲（含暫停、放棄）
 │  ├─ index.ts               對外出入口
 │  └─ __tests__/             Vitest 測試
-├─ ui/                介面層（Phase 2 起）
+├─ online/            連線對戰（第二期 D 起）：Firebase、網路 Codemaker
+├─ ui/                介面層
 └─ main.ts            進入點
 ```
 
 - `src/core/` 內**不得**出現 `document`、`window`、`localStorage`、
-  `navigator`、`HTMLElement` 等任何瀏覽器 API
+  `navigator`、`HTMLElement` 等任何瀏覽器 API，也**不得** import Firebase
 - UI 層一律從 `src/core/index.ts` 匯入，**不要**深入 core 內部個別檔案
-- `core` 不知道 UI 的存在；資料流是單向的
+- `core` 不知道 UI 與網路的存在；資料流是單向的
 
 ### 5. 純度與可測試性
 
@@ -78,12 +88,19 @@ src/
 - 亂數來源 (`Rng`) 與時鐘 (`now`) 都可注入，讓測試具決定性
 - 新增核心邏輯時，同時補上 `src/core/__tests__/` 的測試
 
+### 6. 連線對戰的防作弊紀律
+
+- 資料庫**永遠不存明文密碼或答案**
+- 互相出題：只存 `SHA-256(密碼 + 鹽)`，結束時公開並核對每一次回饋
+- 同一題比速度：答案只有 Cloud Functions 讀得到，判定一律走伺服器
+- 用時一律以**伺服器時間戳記**計算，不信任用戶端時鐘
+
 ---
 
 ## 分階段執行
 
 一次只做一個階段，**做完停下來等確認，不要自己往下做**。
-階段清單與目前進度見 [SPEC.md](./SPEC.md) 第 5 節。
+目前在「第二期」，階段清單與進度見 [SPEC.md](./SPEC.md) 第 5 節。
 
 ---
 
@@ -130,6 +147,8 @@ CI 會跑 `npm ci` → `npm run test:run` → `npm run bundle`，
 1. `npm run bundle`
 2. 請 Claude 用**同一個 artifact 網址**重新發佈 `dist/artifact.html`
    （不帶網址會變成另一個新頁面）
+
+Artifact 平台會封鎖外部連線，**只能玩猜電腦模式，無法連線對戰**。
 
 `dist/artifact.html` 沒有 `<!DOCTYPE>` / `<html>` / `<head>` / `<body>`，
 因為 Artifact 發佈時會自己包上這層外殼（含 charset）。

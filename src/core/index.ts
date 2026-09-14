@@ -20,8 +20,9 @@ export type {
 export { DEFAULT_CONFIG, NOTE_DIGITS } from './types';
 export type { Codemaker } from './Codemaker';
 export { judge } from './judge';
-export { generateCode, isValidCode, validateCode } from './codeGenerator';
+export { allCodes, generateCode, isValidCode, validateCode } from './codeGenerator';
 export { GameNotes } from './GameNotes';
 export { LocalRandomCodemaker } from './LocalRandomCodemaker';
-export { GameSession, SURRENDER_THRESHOLD } from './GameSession';
+export { DevilCodemaker } from './DevilCodemaker';
+export { GameSession } from './GameSession';
 export type { GameSessionOptions } from './GameSession';

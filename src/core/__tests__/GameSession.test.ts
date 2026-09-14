@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GameSession, SURRENDER_THRESHOLD } from '../GameSession';
+import { GameSession } from '../GameSession';
 import { LocalRandomCodemaker } from '../LocalRandomCodemaker';
 import { allValidCodes, mulberry32, seededRng } from './helpers';
 
@@ -9,13 +9,6 @@ function fixedSession(now?: () => number): GameSession {
   return new GameSession(maker, now ? { now } : {});
 }
 
-/** 取出 n 組不重複、且不等於答案的合法猜測。 */
-function wrongGuesses(n: number, answer = '0123'): string[] {
-  return allValidCodes()
-    .filter((c) => c !== answer)
-    .slice(0, n);
-}
-
 describe('GameSession 基本流程', () => {
   it('建立時即開局，狀態為 playing 且沒有歷史', () => {
     const game = fixedSession();
@@ -23,6 +16,7 @@ describe('GameSession 基本流程', () => {
     expect(game.guessCount).toBe(0);
     expect(game.guesses).toEqual([]);
     expect(game.isFinished).toBe(false);
+    expect(game.isPaused).toBe(false);
   });
 
   it('猜錯時累積歷史，index 由 1 遞增', () => {
@@ -68,6 +62,12 @@ describe('GameSession 答案保護', () => {
     expect(game.getAnswer()).toBeNull();
   });
 
+  it('暫停中 getAnswer() 也回傳 null', () => {
+    const game = fixedSession();
+    game.pause();
+    expect(game.getAnswer()).toBeNull();
+  });
+
   it('獲勝後才取得答案', () => {
     const game = fixedSession();
     game.submitGuess('0123');
@@ -76,7 +76,7 @@ describe('GameSession 答案保護', () => {
 
   it('放棄後才取得答案', () => {
     const game = fixedSession();
-    for (const g of wrongGuesses(SURRENDER_THRESHOLD)) game.submitGuess(g);
+    game.submitGuess('4567');
     game.surrender();
     expect(game.getAnswer()).toBe('0123');
   });
@@ -143,37 +143,32 @@ describe('GameSession 擋下不計次的輸入', () => {
 });
 
 describe('GameSession 放棄規則', () => {
-  it('第 10 次猜測之前不可放棄', () => {
+  it('開局還沒猜就可以放棄', () => {
     const game = fixedSession();
-    const guesses = wrongGuesses(SURRENDER_THRESHOLD);
-
-    expect(game.canSurrender).toBe(false);
-    for (let i = 0; i < SURRENDER_THRESHOLD - 1; i += 1) {
-      game.submitGuess(guesses[i]!);
-      expect(game.canSurrender).toBe(false);
-      expect(game.surrender()).toBe(false);
-      expect(game.status).toBe('playing');
-    }
-    expect(game.guessCount).toBe(SURRENDER_THRESHOLD - 1);
-  });
-
-  it('第 10 次猜測結束後才可放棄', () => {
-    const game = fixedSession();
-    for (const g of wrongGuesses(SURRENDER_THRESHOLD)) game.submitGuess(g);
-
-    expect(game.guessCount).toBe(SURRENDER_THRESHOLD);
     expect(game.canSurrender).toBe(true);
     expect(game.surrender()).toBe(true);
     expect(game.status).toBe('surrendered');
+    expect(game.guessCount).toBe(0);
   });
 
-  it('不計次的輸入不會讓放棄提前解鎖', () => {
+  it('猜到一半也可以放棄', () => {
     const game = fixedSession();
-    for (let i = 0; i < 20; i += 1) game.submitGuess('1123');
-    for (let i = 0; i < 20; i += 1) game.submitGuess('4567');
+    game.submitGuess('4567');
+    game.submitGuess('8912');
 
-    expect(game.guessCount).toBe(1);
+    expect(game.canSurrender).toBe(true);
+    expect(game.surrender()).toBe(true);
+    expect(game.status).toBe('surrendered');
+    expect(game.guessCount).toBe(2);
+  });
+
+  it('獲勝後不能放棄', () => {
+    const game = fixedSession();
+    game.submitGuess('0123');
+
     expect(game.canSurrender).toBe(false);
+    expect(game.surrender()).toBe(false);
+    expect(game.status).toBe('won');
   });
 
   it('放棄與獲勝是兩種不同的結束狀態', () => {
@@ -182,18 +177,150 @@ describe('GameSession 放棄規則', () => {
     expect(won.status).toBe('won');
 
     const gaveUp = fixedSession();
-    for (const g of wrongGuesses(SURRENDER_THRESHOLD)) gaveUp.submitGuess(g);
     gaveUp.surrender();
     expect(gaveUp.status).toBe('surrendered');
   });
 
   it('結束後不能再放棄，也不能反悔', () => {
     const game = fixedSession();
-    for (const g of wrongGuesses(SURRENDER_THRESHOLD)) game.submitGuess(g);
     expect(game.surrender()).toBe(true);
     expect(game.canSurrender).toBe(false);
     expect(game.surrender()).toBe(false);
     expect(game.status).toBe('surrendered');
+    expect(game.submitGuess('0123').ok).toBe(false);
+  });
+});
+
+describe('GameSession 暫停', () => {
+  it('pause / resume 只在合理的時機成功', () => {
+    const game = fixedSession();
+
+    expect(game.resume()).toBe(false); // 沒在暫停，不能繼續
+    expect(game.pause()).toBe(true);
+    expect(game.isPaused).toBe(true);
+    expect(game.pause()).toBe(false); // 已經暫停，不能再暫停
+    expect(game.resume()).toBe(true);
+    expect(game.isPaused).toBe(false);
+  });
+
+  it('暫停中送出猜測會被擋下且不計次', () => {
+    const game = fixedSession();
+    game.pause();
+
+    const result = game.submitGuess('0123');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('paused');
+    expect(game.guessCount).toBe(0);
+    expect(game.hasGuessed('0123')).toBe(false);
+    expect(game.status).toBe('playing');
+  });
+
+  it('暫停優先：暫停中連非法輸入也回報 paused', () => {
+    const game = fixedSession();
+    game.pause();
+
+    const result = game.submitGuess('1123');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe('paused');
+  });
+
+  it('繼續之後可以正常猜測', () => {
+    const game = fixedSession();
+    game.pause();
+    game.resume();
+
+    expect(game.submitGuess('4567').ok).toBe(true);
+    expect(game.submitGuess('0123').ok).toBe(true);
+    expect(game.status).toBe('won');
+  });
+
+  it('暫停期間不計入用時', () => {
+    let t = 0;
+    const game = fixedSession(() => t);
+
+    t = 1000;
+    expect(game.elapsedMs).toBe(1000);
+
+    game.pause();
+    t = 5000;
+    expect(game.elapsedMs).toBe(1000); // 暫停中凍結
+
+    game.resume();
+    t = 5500;
+    expect(game.elapsedMs).toBe(1500);
+  });
+
+  it('多次暫停的時間會累計扣除', () => {
+    let t = 0;
+    const game = fixedSession(() => t);
+
+    t = 100;
+    game.pause();
+    t = 600;
+    game.resume(); // 暫停 500
+
+    t = 700;
+    game.pause();
+    t = 1700;
+    game.resume(); // 暫停 1000
+
+    t = 2000;
+    expect(game.elapsedMs).toBe(2000 - 1500);
+  });
+
+  it('猜中時的用時不含暫停時間，且結束後固定', () => {
+    let t = 0;
+    const game = fixedSession(() => t);
+
+    t = 1000;
+    game.pause();
+    t = 4000;
+    game.resume();
+
+    t = 5000;
+    game.submitGuess('0123');
+    expect(game.status).toBe('won');
+    expect(game.elapsedMs).toBe(2000);
+
+    t = 99999;
+    expect(game.elapsedMs).toBe(2000);
+  });
+
+  it('暫停中可以放棄，用時結算到暫停開始的那一刻', () => {
+    let t = 0;
+    const game = fixedSession(() => t);
+
+    t = 3000;
+    game.pause();
+    t = 8000;
+
+    expect(game.surrender()).toBe(true);
+    expect(game.status).toBe('surrendered');
+    expect(game.isPaused).toBe(false);
+    expect(game.finishedAt).toBe(8000);
+    expect(game.elapsedMs).toBe(3000);
+
+    t = 20000;
+    expect(game.elapsedMs).toBe(3000);
+  });
+
+  it('已結束的局不能暫停', () => {
+    const game = fixedSession();
+    game.submitGuess('0123');
+
+    expect(game.pause()).toBe(false);
+    expect(game.isPaused).toBe(false);
+  });
+
+  it('兩局的暫停互不影響', () => {
+    const a = fixedSession();
+    const b = fixedSession();
+    a.pause();
+
+    expect(a.isPaused).toBe(true);
+    expect(b.isPaused).toBe(false);
+    expect(b.submitGuess('4567').ok).toBe(true);
+    expect(a.submitGuess('4567').ok).toBe(false);
   });
 });
 
@@ -268,6 +395,9 @@ describe('GameSession 多局並存（雙人對戰前置驗證）', () => {
 });
 
 describe('GameSession 隨機對局壓力測試', () => {
+  // 約 25 萬次 submitGuess。實測在較慢的機器上約 5 秒，剛好卡在 Vitest 預設的 5 秒上限；
+  // 第二期 A 改動前的版本同樣會逾時，屬於既有的時間預算不足，不是效能退化。
+  // 因此只放寬這一個測試的上限，測試量與內容維持不變。
   it('100 局隨機亂猜到底，狀態與歷史始終自洽', () => {
     const rng = mulberry32(20260912);
     const codes = allValidCodes();
@@ -292,5 +422,5 @@ describe('GameSession 隨機對局壓力測試', () => {
       expect(game.guesses.map((r) => r.index)).toEqual(game.guesses.map((_, i) => i + 1));
       expect(new Set(game.guesses.map((r) => r.guess)).size).toBe(game.guessCount);
     }
-  });
+  }, 30_000);
 });

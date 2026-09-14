@@ -4,9 +4,6 @@ import { DEFAULT_CONFIG } from './types';
 import { isValidCode } from './codeGenerator';
 import { GameNotes } from './GameNotes';
 
-/** 第幾次猜測結束後才允許放棄。 */
-export const SURRENDER_THRESHOLD = 10;
-
 export interface GameSessionOptions {
   /** 覆寫預設規則，未指定的欄位沿用 DEFAULT_CONFIG。 */
   config?: Partial<GameConfig>;
@@ -19,8 +16,11 @@ export interface GameSessionOptions {
 /**
  * 「一局遊戲」。
  *
- * 刻意設計成可以同時存在多份實例（未來雙人對戰時畫面上會有兩局），
+ * 刻意設計成可以同時存在多份實例（對戰時畫面上會有兩局），
  * 所有狀態都在實例內部，模組層級沒有任何可變的遊戲狀態。
+ *
+ * GameSession 可以搭配任何 Codemaker（一般、惡魔、未來的連線對戰），
+ * 它不知道也不在乎答案是怎麼產生的。
  *
  * UI 層只會拿到 GameSession，拿不到 Codemaker，
  * 而 getAnswer() 在遊戲進行中一律回傳 null —— 從執行期擋住偷看答案。
@@ -39,6 +39,10 @@ export class GameSession {
 
   #status: GameStatus = 'playing';
   #finishedAt: number | null = null;
+  /** 目前這次暫停的開始時間；沒有在暫停時為 null。 */
+  #pausedAt: number | null = null;
+  /** 已經結束的暫停累計時長。 */
+  #pausedTotalMs = 0;
 
   constructor(codemaker: Codemaker, options: GameSessionOptions = {}) {
     this.#codemaker = codemaker;
@@ -69,18 +73,28 @@ export class GameSession {
     return this.#status !== 'playing';
   }
 
-  /** 放棄按鈕是否該存在：第 SURRENDER_THRESHOLD 次猜測結束後才為 true。 */
+  /** 是否暫停中。 */
+  get isPaused(): boolean {
+    return this.#pausedAt !== null;
+  }
+
+  /** 是否可以放棄：進行中隨時可以（包含開局還沒猜、以及暫停中）。 */
   get canSurrender(): boolean {
-    return this.#status === 'playing' && this.#guesses.length >= SURRENDER_THRESHOLD;
+    return this.#status === 'playing';
   }
 
   get finishedAt(): number | null {
     return this.#finishedAt;
   }
 
-  /** 本局經過時間（毫秒）。進行中以當下時間計算，結束後固定。 */
+  /**
+   * 本局實際遊玩時間（毫秒），**不含暫停的時間**。
+   * 進行中以當下時間計算；暫停中停止增加；結束後固定。
+   */
   get elapsedMs(): number {
-    return (this.#finishedAt ?? this.#now()) - this.startedAt;
+    const end = this.#finishedAt ?? this.#now();
+    const ongoingPauseMs = this.#pausedAt === null ? 0 : end - this.#pausedAt;
+    return end - this.startedAt - this.#pausedTotalMs - ongoingPauseMs;
   }
 
   /** 這組數字是否已經猜過。 */
@@ -91,12 +105,15 @@ export class GameSession {
   /**
    * 送出一次猜測。
    *
-   * 非法輸入、重複猜測、已結束的局都會被擋下且「不計次」，
+   * 已結束、暫停中、非法輸入、重複猜測都會被擋下且「不計次」，
    * 回傳的 reason 由 UI 層翻成對應的中文訊息。
    */
   submitGuess(guess: string): SubmitResult {
     if (this.#status !== 'playing') {
       return { ok: false, reason: 'finished' };
+    }
+    if (this.#pausedAt !== null) {
+      return { ok: false, reason: 'paused' };
     }
     if (!isValidCode(guess, this.config)) {
       return { ok: false, reason: 'invalid' };
@@ -123,8 +140,23 @@ export class GameSession {
     return { ok: true, record };
   }
 
+  /** 暫停。只有進行中且尚未暫停時才會成功。 */
+  pause(): boolean {
+    if (this.#status !== 'playing' || this.#pausedAt !== null) return false;
+    this.#pausedAt = this.#now();
+    return true;
+  }
+
+  /** 從暫停繼續。只有暫停中才會成功。 */
+  resume(): boolean {
+    if (this.#pausedAt === null) return false;
+    this.#pausedTotalMs += this.#now() - this.#pausedAt;
+    this.#pausedAt = null;
+    return true;
+  }
+
   /**
-   * 放棄本局。只有在 canSurrender 為 true 時才會成功。
+   * 放棄本局。進行中隨時可以放棄（包含暫停中）。
    * 二次確認由 UI 層負責。
    */
   surrender(): boolean {
@@ -140,8 +172,14 @@ export class GameSession {
   }
 
   #finish(status: Exclude<GameStatus, 'playing'>): void {
+    const now = this.#now();
+    // 暫停中結束（例如暫停時放棄）：先把這段暫停結算進去，用時才會正確
+    if (this.#pausedAt !== null) {
+      this.#pausedTotalMs += now - this.#pausedAt;
+      this.#pausedAt = null;
+    }
     this.#status = status;
-    this.#finishedAt = this.#now();
+    this.#finishedAt = now;
   }
 }
 
