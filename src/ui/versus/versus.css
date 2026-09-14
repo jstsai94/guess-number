@@ -74,6 +74,46 @@
   margin-top: 0;
 }
 
+/* ---------- 設定密碼 ---------- */
+
+.versus-secret .versus-title {
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.versus-subtitle {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.my-secret {
+  margin: 6px 0 14px;
+  font-family: var(--mono);
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: var(--text);
+}
+
+/*
+ * 觸控裝置上 .panel-left 會變成 flex 並替數字格、提示、鍵盤排序；
+ * 對手狀態沒有指定排序的話會跑到數字格上面，所以固定排在最後。
+ */
+.opponent-status {
+  order: 6;
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.opponent-status.is-ready {
+  color: var(--a-color);
+  font-weight: 600;
+}
+
 .versus-loading {
   margin: 8px 0;
   color: var(--text-muted);

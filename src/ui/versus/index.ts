@@ -4,14 +4,15 @@ import { openMatch, type MatchView, type VersusMatch } from '../../online/match'
 import { RoomError, cancelRoom, createRoom, joinRoom } from '../../online/room';
 import { el } from '../dom';
 import { createJoinView } from './JoinView';
+import { createSecretView, type SecretViewHandle } from './SecretView';
 import { createWaitView } from './WaitView';
 
 /**
  * 連線對戰的入口。整個資料夾（含 Firebase）以 import() 按需載入，
  * 只玩猜電腦的人不會下載它。
  *
- * 目前完成：建立房間 → 等待對手；加入房間。
- * 設定密碼、對戰中、結算畫面在接下來的階段補上。
+ * 目前完成：建立房間 → 等待對手；加入房間；雙方設定密碼。
+ * 對戰中、結算畫面在接下來的階段補上。
  */
 
 export interface VersusScreenOptions {
@@ -40,10 +41,12 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
   let match: VersusMatch | null = null;
   let currentPart: Disposable | null = null;
   let renderedPhase: MatchView['phase'] | null = null;
+  let secretView: SecretViewHandle | null = null;
 
   function setBody(node: HTMLElement, part: Disposable | null = null): void {
     currentPart?.destroy();
     currentPart = part;
+    secretView = null;
     body.replaceChildren(node);
   }
 
@@ -67,7 +70,29 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
   // ---------- 對戰狀態 → 畫面 ----------
 
   function render(view: MatchView): void {
-    if (destroyed || view.phase === renderedPhase) return;
+    if (destroyed) return;
+
+    // 設定密碼：畫面持續存在，只更新雙方狀態
+    if (view.phase === 'setting') {
+      if (!secretView) {
+        const created = createSecretView({
+          onCommit: async (code) => {
+            if (!match) throw new Error('對戰尚未連線');
+            await match.commit(code);
+          },
+        });
+        setBody(created.el, created);
+        secretView = created;
+      }
+      secretView.update({
+        meCommitted: view.me.committed,
+        opponentCommitted: view.opponent?.committed ?? false,
+      });
+      renderedPhase = view.phase;
+      return;
+    }
+
+    if (view.phase === renderedPhase) return;
 
     switch (view.phase) {
       case 'waiting':
@@ -76,10 +101,9 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
       case 'cancelled':
         showMessage('房間已關閉', '房主已經取消這個房間。');
         break;
-      case 'setting':
       case 'playing':
       case 'finished':
-        showMessage('對手已加入', '設定密碼與對戰畫面還在製作中。');
+        showMessage('雙方都設定好了', '對戰畫面還在製作中。');
         break;
     }
     renderedPhase = view.phase;
