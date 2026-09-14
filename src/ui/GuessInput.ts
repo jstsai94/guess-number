@@ -1,10 +1,12 @@
 import { el } from './dom';
 
 export interface GuessInputOptions {
-  /** 數字格數量。 */
+  /** 數字格數量（猜數字是 4 格，房號是 6 格）。 */
   length: number;
   /** 按下送出（或 Enter）時觸發，帶入目前已填入的字串。 */
   onSubmit: (code: string) => void;
+  /** 送出按鈕上的文字，預設「送出」。 */
+  submitLabel?: string;
 }
 
 export interface GuessInputHandle {
@@ -22,7 +24,7 @@ export interface GuessInputHandle {
 }
 
 /**
- * 4 個數字格 + 送出按鈕 + 頁面內建數字鍵盤。
+ * 數字格 + 送出按鈕 + 頁面內建數字鍵盤。
  *
  * 數字格刻意**不是** <input>：在手機與平板上點 <input> 會叫出系統鍵盤，
  * 擋住半個畫面，iOS 還會順便把頁面放大。改用按鈕之後，
@@ -32,7 +34,7 @@ export interface GuessInputHandle {
  * 這個元件不做合法性判斷，只負責收集輸入。
  */
 export function createGuessInput(options: GuessInputOptions): GuessInputHandle {
-  const { length, onSubmit } = options;
+  const { length, onSubmit, submitLabel = '送出' } = options;
 
   const digits = Array.from({ length }, () => '');
   let active = 0;
@@ -50,7 +52,7 @@ export function createGuessInput(options: GuessInputOptions): GuessInputHandle {
     slots.push(slot);
   }
 
-  const submitButton = el('button', { class: 'submit', type: 'button', text: '送出' });
+  const submitButton = el('button', { class: 'submit', type: 'button', text: submitLabel });
   submitButton.addEventListener('click', submit);
 
   const row = el('div', { class: 'input-row' }, [...slots, submitButton]);
@@ -77,7 +79,7 @@ export function createGuessInput(options: GuessInputOptions): GuessInputHandle {
   const keypadSubmit = el('button', {
     class: 'key key-submit',
     type: 'button',
-    text: '送出',
+    text: submitLabel,
   });
   keypadSubmit.addEventListener('click', submit);
   keypadKeys.push(keypadSubmit);

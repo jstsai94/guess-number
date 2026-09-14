@@ -1,21 +1,30 @@
 import { GameSession } from '../core';
 import { createGameView } from './GameView';
-import type { GameViewHandle } from './GameView';
 import { createMenuView } from './MenuView';
-import type { MenuViewHandle } from './MenuView';
 import { createCodemaker } from './difficulty';
 import type { Difficulty } from './difficulty';
 
+interface ScreenHandle {
+  readonly el: HTMLElement;
+  destroy(): void;
+}
+
 /**
- * 掛載應用：在「模式選擇」與「遊戲」兩個畫面之間切換。
+ * 第二期 D 尚未完成前，連線對戰只在網址帶 `?versus` 時顯示（SPEC：D 完成前選單不顯示連線對戰）。
+ * 這是唯讀的旗標，不是遊戲狀態。
+ */
+const VERSUS_PREVIEW = new URLSearchParams(window.location.search).has('versus');
+
+/**
+ * 掛載應用：在「模式選擇」「猜電腦」「連線對戰」幾個畫面之間切換。
  *
  * 「目前顯示哪個畫面」是 mountApp 的區域變數，不是模組層級的全域狀態 ——
  * 要在同一頁掛兩份，直接呼叫兩次即可。
  */
 export function mountApp(root: HTMLElement): void {
-  let current: GameViewHandle | MenuViewHandle | null = null;
+  let current: ScreenHandle | null = null;
 
-  const show = (next: GameViewHandle | MenuViewHandle): void => {
+  const show = (next: ScreenHandle): void => {
     current?.destroy();
     current = next;
     root.replaceChildren(next.el);
@@ -23,11 +32,23 @@ export function mountApp(root: HTMLElement): void {
   };
 
   const showMenu = (): void => {
-    show(createMenuView({ onStart: (difficulty) => void startGame(difficulty) }));
+    show(
+      createMenuView({
+        onStart: (difficulty) => void startGame(difficulty),
+        ...(VERSUS_PREVIEW
+          ? {
+              versus: {
+                onCreateRoom: () => void startVersus('host'),
+                onJoinRoom: () => void startVersus('join'),
+              },
+            }
+          : {}),
+      }),
+    );
   };
 
   const startGame = async (difficulty: Difficulty): Promise<void> => {
-    // 開局是非同步的：本地模式立刻完成，連線對戰要等房間準備好
+    // 開局是非同步的：本地模式立刻完成
     const session = await GameSession.create(createCodemaker(difficulty));
     show(
       createGameView(session, {
@@ -36,6 +57,16 @@ export function mountApp(root: HTMLElement): void {
         onMenu: showMenu,
       }),
     );
+  };
+
+  const startVersus = async (mode: 'host' | 'join'): Promise<void> => {
+    // 按需載入：只有真的進入連線對戰，才會下載 Firebase
+    try {
+      const { createVersusScreen } = await import('./versus');
+      show(createVersusScreen({ mode, onExit: showMenu }));
+    } catch (error) {
+      console.error('無法載入連線對戰模組', error);
+    }
   };
 
   showMenu();

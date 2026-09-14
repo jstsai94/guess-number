@@ -1,0 +1,91 @@
+/*
+ * 連線對戰畫面的樣式。跟著對戰模組一起按需載入，
+ * 沿用 styles.css 的色彩變數與元件，不另做一套風格。
+ */
+
+.versus-body {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.versus-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.versus-card {
+  text-align: center;
+}
+
+.versus-title {
+  margin: 0 0 18px;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.versus-join .versus-title {
+  text-align: left;
+}
+
+/* 房號有 6 格，比猜數字多 2 格：縮小格子，並讓按鈕文字不被擠成直排 */
+.versus-join .slot {
+  flex-basis: 58px;
+  height: 58px;
+  font-size: 26px;
+}
+
+.versus-join .submit {
+  flex: none;
+  white-space: nowrap;
+}
+
+.versus-label {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.room-code {
+  margin: 6px 0 18px;
+  font-family: var(--mono);
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  /* letter-spacing 會在末字後補間距，往回拉齊置中 */
+  margin-right: -0.3em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.versus-hint {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.versus-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.versus-stack > .versus-actions {
+  margin-top: 0;
+}
+
+.versus-loading {
+  margin: 8px 0;
+  color: var(--text-muted);
+}
+
+.versus-message {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+@media (max-width: 720px) {
+  .room-code {
+    font-size: 36px;
+  }
+}
