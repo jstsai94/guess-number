@@ -1,9 +1,8 @@
 /**
- * 把 `vite build` 的產物打包成單一 HTML 檔，CSS 與 JS 全部內嵌、零外部請求。
+ * 把 `vite build` 的產物打包成單一 HTML 檔：docs/index.html。
  *
- * 會產出兩個版本：
- *   dist/artifact.html  給 Claude Artifact 用（發佈時平台會自己包上 doctype/head/body）
- *   docs/index.html     完整獨立網頁，GitHub Pages 或任何靜態主機直接放就能跑
+ * CSS 與 JS 全部內嵌、零外部請求，
+ * GitHub Pages 或任何靜態主機直接放就能跑，下載後雙擊也能開啟。
  *
  * 使用方式：npm run bundle
  */
@@ -29,29 +28,13 @@ const js = readFileSync(join(ASSETS, jsName), 'utf8');
 // 內嵌 script 內若出現 </script 會提前結束標籤，必須跳脫
 const safeJs = js.replaceAll('</script', '<\\/script');
 
-const body = `<div id="app"></div>
-<script type="module">
-${safeJs}
-</script>
-`;
-
-// --- Claude Artifact 版：不含外層骨架 ---
-const artifact = `<title>1A2B 猜數字</title>
-<style>
-${css}
-</style>
-${body}`;
-
-writeFileSync(join(DIST, 'artifact.html'), artifact, 'utf8');
-
-// --- 獨立網頁版：完整骨架，雙擊就能開 ---
 const favicon =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E" +
   "%3Crect width='100' height='100' rx='22' fill='%232563eb'/%3E" +
   "%3Ctext x='50' y='70' font-size='54' font-family='monospace' font-weight='bold' " +
   "text-anchor='middle' fill='white'%3E1A%3C/text%3E%3C/svg%3E";
 
-const standalone = `<!doctype html>
+const html = `<!doctype html>
 <html lang="zh-Hant">
   <head>
     <meta charset="UTF-8" />
@@ -64,13 +47,14 @@ ${css}
     </style>
   </head>
   <body>
-${body}  </body>
+<div id="app"></div>
+<script type="module">
+${safeJs}
+</script>
+  </body>
 </html>
 `;
 
 mkdirSync(DOCS, { recursive: true });
-writeFileSync(join(DOCS, 'index.html'), standalone, 'utf8');
-
-const kb = (s) => `${(s.length / 1024).toFixed(1)} kB`;
-console.log(`已輸出 ${join(DIST, 'artifact.html')}（${kb(artifact)}）`);
-console.log(`已輸出 ${join(DOCS, 'index.html')}（${kb(standalone)}）`);
+writeFileSync(join(DOCS, 'index.html'), html, 'utf8');
+console.log(`已輸出 ${join(DOCS, 'index.html')}（${(html.length / 1024).toFixed(1)} kB）`);

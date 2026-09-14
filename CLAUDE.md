@@ -126,33 +126,15 @@ npm run test       # Vitest watch
 npm run test:run   # Vitest 單次執行
 npm run typecheck  # tsc --noEmit
 npm run build      # tsc && vite build
-npm run bundle     # build + 打包成單檔 dist/artifact.html
+npm run bundle     # build + 打包成單檔 docs/index.html（GitHub Pages 的部署內容）
 ```
 
 ## 發佈
 
-有兩個線上版本，來源不同：
-
-### GitHub Pages（公開，免登入）
-
-<https://jstsai94.github.io/guess-number/>
+線上版：<https://jstsai94.github.io/guess-number/>（公開，免登入）
 
 **push 到 `main` 就自動部署**，本機不必跑任何指令。
 CI 會跑 `npm ci` → `npm run test:run` → `npm run bundle`，
 測試沒過就不部署，通過才把 `docs/` 發佈上去。
 
 `docs/` 與 `dist/` 都是建置產物、**不進版控** —— 不要 commit 它們。
-
-### Claude Artifact（需 Claude 帳號）
-
-這個沒有自動化，要手動更新：
-
-1. `npm run bundle`
-2. 請 Claude 用**同一個 artifact 網址**重新發佈 `dist/artifact.html`
-   （不帶網址會變成另一個新頁面）
-
-Artifact 平台會封鎖外部連線，**只能玩猜電腦模式，無法連線對戰**。
-
-`dist/artifact.html` 沒有 `<!DOCTYPE>` / `<html>` / `<head>` / `<body>`，
-因為 Artifact 發佈時會自己包上這層外殼（含 charset）。
-`docs/index.html` 則是補齊外殼的完整網頁，給一般靜態主機用。

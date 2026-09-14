@@ -28,14 +28,8 @@ npm run typecheck  # tsc --noEmit
 npm run bundle     # 建置 + 打包成單檔
 ```
 
-`npm run bundle` 會產出兩個檔案，兩者都是 CSS/JS 全部內嵌、**零外部請求**的單一 HTML：
-
-| 檔案 | 用途 |
-| --- | --- |
-| `docs/index.html` | 部署到 GitHub Pages 的內容，也可以直接雙擊開啟 |
-| `dist/artifact.html` | 給 Claude Artifact 用（發佈時平台會自己包外層骨架） |
-
-兩者都不進版控，由 CI 產生。
+`npm run bundle` 會產出 `docs/index.html`：CSS/JS 全部內嵌、**零外部請求**的單一 HTML，
+也就是部署到 GitHub Pages 的內容，下載後直接雙擊也能開啟。它不進版控，由 CI 產生。
 
 ## 部署
 

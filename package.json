@@ -10,7 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "bundle": "npm run build && node scripts/bundle-artifact.mjs"
+    "bundle": "npm run build && node scripts/bundle.mjs"
   },
   "devDependencies": {
     "typescript": "~6.0.2",
