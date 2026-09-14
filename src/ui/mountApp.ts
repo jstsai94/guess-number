@@ -10,12 +10,6 @@ interface ScreenHandle {
 }
 
 /**
- * 第二期 D 尚未完成前，連線對戰只在網址帶 `?versus` 時顯示（SPEC：D 完成前選單不顯示連線對戰）。
- * 這是唯讀的旗標，不是遊戲狀態。
- */
-const VERSUS_PREVIEW = new URLSearchParams(window.location.search).has('versus');
-
-/**
  * 掛載應用：在「模式選擇」「猜電腦」「連線對戰」幾個畫面之間切換。
  *
  * 「目前顯示哪個畫面」是 mountApp 的區域變數，不是模組層級的全域狀態 ——
@@ -35,14 +29,10 @@ export function mountApp(root: HTMLElement): void {
     show(
       createMenuView({
         onStart: (difficulty) => void startGame(difficulty),
-        ...(VERSUS_PREVIEW
-          ? {
-              versus: {
-                onCreateRoom: () => void startVersus('host'),
-                onJoinRoom: () => void startVersus('join'),
-              },
-            }
-          : {}),
+        versus: {
+          onCreateRoom: () => void startVersus('host'),
+          onJoinRoom: () => void startVersus('join'),
+        },
       }),
     );
   };
