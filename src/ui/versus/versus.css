@@ -124,8 +124,188 @@
   color: var(--text-soft);
 }
 
+/* ---------- 對戰中 ---------- */
+
+/* 對戰中需要雙欄，不受等待／加入畫面的窄版寬度限制 */
+.versus-body.is-wide {
+  max-width: none;
+}
+
+.versus-meta {
+  justify-content: flex-end;
+  margin: -8px 0 18px;
+}
+
+.meta-room {
+  font-family: var(--mono);
+}
+
+.versus-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.opponent-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.opponent-state {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.opponent-state.is-solved {
+  color: var(--a-color);
+}
+
+.opponent-state.is-gone {
+  color: var(--text-muted);
+}
+
+.opponent-count {
+  color: var(--text-muted);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.opponent-my-secret {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.opponent-guesses {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-row.is-compact {
+  padding: 9px 14px;
+}
+
+.history-row.is-compact .history-guess {
+  font-size: 20px;
+}
+
+.history-row.is-compact .history-result {
+  font-size: 22px;
+}
+
+.opponent-pending {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.opponent-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.versus-solved {
+  padding: 12px 0 4px;
+  text-align: center;
+}
+
+.versus-solved-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--a-color);
+}
+
+.versus-solved-text {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+/* 自己已經猜中或放棄：收起輸入區。觸控裝置上 .input-area 是 display: contents，所以要用 !important */
+.panel-left.is-done .input-area,
+.panel-left.is-done .hint,
+.panel-left.is-done .surrender-slot {
+  display: none !important;
+}
+
+/* ---------- 結算 ---------- */
+
+.result-headline {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.result-headline.is-win {
+  color: var(--a-color);
+}
+
+.result-headline.is-lose {
+  color: var(--text-soft);
+}
+
+.result-reason {
+  margin: 6px 0 22px;
+  color: var(--text-muted);
+}
+
+.result-table {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 10px 18px;
+  align-items: baseline;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-table .cell-head {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.result-table .cell-label {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.result-table .cell-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.result-table .cell-code {
+  font-family: var(--mono);
+  letter-spacing: 0.16em;
+}
+
+.result-verify {
+  margin: 20px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.result-verify.is-ok {
+  color: var(--a-color);
+}
+
+.result-verify.is-bad {
+  color: var(--error);
+  font-weight: 600;
+}
+
 @media (max-width: 720px) {
   .room-code {
     font-size: 36px;
+  }
+
+  .result-headline {
+    font-size: 26px;
   }
 }

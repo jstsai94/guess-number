@@ -47,6 +47,8 @@ export interface SideView {
   /** 已完成判定的猜測次數。 */
   readonly guessCount: number;
   readonly solved: boolean;
+  /** 猜中那一次「送出」時距離對戰開始的毫秒數；未猜中為 null。 */
+  readonly solvedElapsedMs: number | null;
   /** 這一方送出的猜測，依送出順序；feedback 為 null 表示還在等對方判定。 */
   readonly guesses: ReadonlyArray<{ readonly guess: string; readonly feedback: Feedback | null }>;
 }
@@ -68,6 +70,8 @@ export interface MatchView {
   readonly revealed: { readonly me: string | null; readonly opponent: string | null };
   /** 對戰已開始，但這個分頁找不到自己的密碼（例如換了分頁），無法替對手判定。 */
   readonly secretMissing: boolean;
+  /** 自己設定的密碼，只用來顯示在自己的畫面上；不會送到任何地方。 */
+  readonly mySecret: string | null;
 }
 
 export interface VersusMatch {
@@ -124,6 +128,8 @@ export async function openMatch(roomCode: string): Promise<VersusMatch> {
         surrendered: Boolean(player?.surrendered),
         guessCount: judged.length,
         solved: solving !== null,
+        // 需要雙方的開始時間才能計算，由 buildView 補上
+        solvedElapsedMs: null,
         guesses: sent.map((g) => ({ guess: g.guess, feedback: g.feedback })),
       },
       solvedCreatedAtMs: solving?.createdAt?.toMillis() ?? null,
@@ -153,6 +159,14 @@ export async function openMatch(roomCode: string): Promise<VersusMatch> {
       committedTimes[0] && committedTimes[1]
         ? Math.max(committedTimes[0].toMillis(), committedTimes[1].toMillis())
         : null;
+
+    const withElapsed = (summary: Summary): SideView => ({
+      ...summary.view,
+      solvedElapsedMs:
+        summary.solvedCreatedAtMs !== null && startedAtMs !== null
+          ? summary.solvedCreatedAtMs - startedAtMs
+          : null,
+    });
 
     let phase: MatchPhase;
     if (!s.room) phase = 'cancelled';
@@ -185,8 +199,8 @@ export async function openMatch(roomCode: string): Promise<VersusMatch> {
     return {
       roomCode,
       phase,
-      me: me.view,
-      opponent: them?.view ?? null,
+      me: withElapsed(me),
+      opponent: them ? withElapsed(them) : null,
       startedAtMs,
       outcome,
       verification,
@@ -195,6 +209,7 @@ export async function openMatch(roomCode: string): Promise<VersusMatch> {
         opponent: opp ? (s.reveals.get(opp)?.code ?? null) : null,
       },
       secretMissing: me.view.committed && secret === null,
+      mySecret: secret?.code ?? null,
     };
   }
 

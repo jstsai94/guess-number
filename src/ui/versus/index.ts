@@ -1,18 +1,21 @@
 import './versus.css';
+import { GameSession } from '../../core';
 import { getFirebase } from '../../online/firebase';
 import { openMatch, type MatchView, type VersusMatch } from '../../online/match';
+import { OpponentCodemaker } from '../../online/OpponentCodemaker';
 import { RoomError, cancelRoom, createRoom, joinRoom } from '../../online/room';
 import { el } from '../dom';
 import { createJoinView } from './JoinView';
+import { createResultView, type ResultViewHandle } from './ResultView';
 import { createSecretView, type SecretViewHandle } from './SecretView';
+import { createVersusGameView, type VersusGameViewHandle } from './VersusGameView';
 import { createWaitView } from './WaitView';
 
 /**
  * 連線對戰的入口。整個資料夾（含 Firebase）以 import() 按需載入，
  * 只玩猜電腦的人不會下載它。
  *
- * 目前完成：建立房間 → 等待對手；加入房間；雙方設定密碼。
- * 對戰中、結算畫面在接下來的階段補上。
+ * 流程：建立房間 → 等待對手／加入房間 → 雙方設定密碼 → 對戰中 → 結算
  */
 
 export interface VersusScreenOptions {
@@ -41,12 +44,21 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
   let match: VersusMatch | null = null;
   let currentPart: Disposable | null = null;
   let renderedPhase: MatchView['phase'] | null = null;
-  let secretView: SecretViewHandle | null = null;
+  let latestView: MatchView | null = null;
 
-  function setBody(node: HTMLElement, part: Disposable | null = null): void {
+  // 各階段目前顯示的畫面；切換畫面時一律歸零
+  let secretView: SecretViewHandle | null = null;
+  let gameView: VersusGameViewHandle | null = null;
+  let resultView: ResultViewHandle | null = null;
+  let creatingGame = false;
+
+  function setBody(node: HTMLElement, part: Disposable | null = null, wide = false): void {
     currentPart?.destroy();
     currentPart = part;
     secretView = null;
+    gameView = null;
+    resultView = null;
+    body.classList.toggle('is-wide', wide);
     body.replaceChildren(node);
   }
 
@@ -71,42 +83,70 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
 
   function render(view: MatchView): void {
     if (destroyed) return;
-
-    // 設定密碼：畫面持續存在，只更新雙方狀態
-    if (view.phase === 'setting') {
-      if (!secretView) {
-        const created = createSecretView({
-          onCommit: async (code) => {
-            if (!match) throw new Error('對戰尚未連線');
-            await match.commit(code);
-          },
-        });
-        setBody(created.el, created);
-        secretView = created;
-      }
-      secretView.update({
-        meCommitted: view.me.committed,
-        opponentCommitted: view.opponent?.committed ?? false,
-      });
-      renderedPhase = view.phase;
-      return;
-    }
-
-    if (view.phase === renderedPhase) return;
+    latestView = view;
 
     switch (view.phase) {
       case 'waiting':
         // 房主的等待畫面在建立房間時已經顯示，這裡不重畫
         break;
+
       case 'cancelled':
-        showMessage('房間已關閉', '房主已經取消這個房間。');
+        if (renderedPhase !== 'cancelled') showMessage('房間已關閉', '房主已經取消這個房間。');
         break;
+
+      case 'setting':
+        if (!secretView) {
+          const created = createSecretView({
+            onCommit: async (code) => {
+              if (!match) throw new Error('對戰尚未連線');
+              await match.commit(code);
+            },
+          });
+          setBody(created.el, created);
+          secretView = created;
+        }
+        secretView.update({
+          meCommitted: view.me.committed,
+          opponentCommitted: view.opponent?.committed ?? false,
+        });
+        break;
+
       case 'playing':
+        if (gameView) gameView.update(view);
+        else void startGame();
+        break;
+
       case 'finished':
-        showMessage('雙方都設定好了', '對戰畫面還在製作中。');
+        if (!resultView) {
+          const created = createResultView({ onExit: () => options.onExit() });
+          setBody(created.el, created);
+          resultView = created;
+        }
+        resultView.update(view);
         break;
     }
+
     renderedPhase = view.phase;
+  }
+
+  /** 雙方都設定好密碼：建立這一局（答案是對手的密碼），顯示對戰畫面。 */
+  async function startGame(): Promise<void> {
+    if (creatingGame || !match) return;
+    creatingGame = true;
+    try {
+      const session = await GameSession.create(new OpponentCodemaker(match.link));
+      // 建立期間畫面可能已經切走（例如對戰已結束或離開）
+      if (destroyed || !match || latestView?.phase !== 'playing') return;
+
+      const created = createVersusGameView({ match, session });
+      setBody(created.el, created, true);
+      gameView = created;
+      created.update(latestView);
+    } catch (error) {
+      if (!destroyed) console.warn('無法開始對戰', error);
+    } finally {
+      creatingGame = false;
+    }
   }
 
   async function enterRoom(roomCode: string): Promise<void> {
