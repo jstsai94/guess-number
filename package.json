@@ -10,7 +10,6 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "bundle": "npm run build && node scripts/bundle.mjs",
     "test:rules": "vitest run --config vitest.rules.config.ts"
   },
   "devDependencies": {

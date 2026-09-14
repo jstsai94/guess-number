@@ -125,8 +125,8 @@ npm run dev        # 開發伺服器（port 5180）
 npm run test       # Vitest watch
 npm run test:run   # Vitest 單次執行
 npm run typecheck  # tsc --noEmit
-npm run build      # tsc && vite build
-npm run bundle     # build + 打包成單檔 docs/index.html（GitHub Pages 的部署內容）
+npm run build      # tsc && vite build，輸出到 dist/（GitHub Pages 的部署內容）
+npm run test:rules # 安全規則測試（需要 Firestore 模擬器與 Java，平常由 CI 執行）
 ```
 
 ## 發佈
@@ -134,7 +134,10 @@ npm run bundle     # build + 打包成單檔 docs/index.html（GitHub Pages 的�
 線上版：<https://jstsai94.github.io/guess-number/>（公開，免登入）
 
 **push 到 `main` 就自動部署**，本機不必跑任何指令。
-CI 會跑 `npm ci` → `npm run test:run` → `npm run bundle`，
-測試沒過就不部署，通過才把 `docs/` 發佈上去。
+CI 會跑三件事：單元測試與建置、安全規則測試（Firestore 模擬器），
+任何一項沒過就不部署，全部通過才把 `dist/` 發佈上去。
 
-`docs/` 與 `dist/` 都是建置產物、**不進版控** —— 不要 commit 它們。
+`dist/` 是建置產物、**不進版控** —— 不要 commit 它。
+
+連線對戰模組（`src/online/`）一律以 `import()` 按需載入，
+只玩猜電腦的人不會下載 Firebase。

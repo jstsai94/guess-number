@@ -25,19 +25,19 @@ npm run dev        # 開發伺服器（port 5180）
 npm run test       # Vitest watch
 npm run test:run   # 單次執行
 npm run typecheck  # tsc --noEmit
-npm run bundle     # 建置 + 打包成單檔
+npm run build      # 型別檢查 + 建置，輸出到 dist/
 ```
 
-`npm run bundle` 會產出 `docs/index.html`：CSS/JS 全部內嵌、**零外部請求**的單一 HTML，
-也就是部署到 GitHub Pages 的內容，下載後直接雙擊也能開啟。它不進版控，由 CI 產生。
+`npm run build` 會把網站輸出到 `dist/`，也就是部署到 GitHub Pages 的內容。它不進版控，由 CI 產生。
+猜電腦模式完全不需要網路；連線對戰的 Firebase 模組只有在進入對戰時才會下載。
 
 ## 部署
 
 push 到 `main` 就會自動部署，不需要在本機跑任何指令：
 
-1. GitHub Actions 跑 `npm ci` → `npm run test:run` → `npm run bundle`
-2. **測試沒過就不會部署**
-3. 通過後把 `docs/` 發佈到 GitHub Pages
+1. GitHub Actions 平行執行：單元測試與建置、安全規則測試（Firestore 模擬器）
+2. **任何一項沒過就不會部署**
+3. 全部通過後把 `dist/` 發佈到 GitHub Pages
 
 workflow 見 [.github/workflows/deploy.yml](./.github/workflows/deploy.yml)，
 也可以在 Actions 頁面手動觸發。
@@ -65,4 +65,5 @@ UI 拿不到 `Codemaker`，而 `GameSession.getAnswer()` 在遊戲進行中一�
 
 ## 技術
 
-Vite + TypeScript（vanilla-ts），零執行期依賴，沒有 UI 框架。測試用 Vitest。
+Vite + TypeScript（vanilla-ts），沒有 UI 框架。測試用 Vitest。
+唯一的執行期依賴是 Firebase，只在連線對戰時按需載入。

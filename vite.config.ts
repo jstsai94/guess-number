@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // 以相對路徑輸出，才能部署在 GitHub Pages 的子路徑 /guess-number/ 底下
+  base: './',
   build: {
     // 壓縮器預設會把 max-width 改寫成 CSS Level 4 區間語法（width<=720px），
     // 那需要 Safari 16.4+。舊手機看不懂會整條媒體查詢丟掉，
