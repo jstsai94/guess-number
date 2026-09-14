@@ -22,43 +22,43 @@ function partition(candidates: readonly string[], guess: string): Map<string, st
 }
 
 /** 開一局惡魔模式。 */
-function devil(seed = 1): DevilCodemaker {
+async function devil(seed = 1): Promise<DevilCodemaker> {
   const maker = new DevilCodemaker(mulberry32(seed));
-  maker.startGame(DEFAULT_CONFIG);
+  await maker.startGame(DEFAULT_CONFIG);
   return maker;
 }
 
 describe('DevilCodemaker 基本行為', () => {
-  it('尚未 startGame 就呼叫 judge 或 reveal 會拋出錯誤', () => {
+  it('尚未 startGame 就呼叫 judge 或 reveal 會拒絕', async () => {
     const maker = new DevilCodemaker();
-    expect(() => maker.judge('0123')).toThrow();
-    expect(() => maker.reveal()).toThrow();
+    await expect(maker.judge('0123')).rejects.toThrow();
+    await expect(maker.reveal()).rejects.toThrow();
   });
 
-  it('judge 收到不合法的猜測會拋出錯誤', () => {
-    const maker = devil();
-    expect(() => maker.judge('012')).toThrow();
-    expect(() => maker.judge('0012')).toThrow();
-    expect(() => maker.judge('01a3')).toThrow();
+  it('judge 收到不合法的猜測會拒絕', async () => {
+    const maker = await devil();
+    await expect(maker.judge('012')).rejects.toThrow();
+    await expect(maker.judge('0012')).rejects.toThrow();
+    await expect(maker.judge('01a3')).rejects.toThrow();
   });
 
-  it('第一次猜 0123 必定回 0A1B（5040 組中最大的一組，共 1440 組）', () => {
+  it('第一次猜 0123 必定回 0A1B（5040 組中最大的一組，共 1440 組）', async () => {
     expect(partition(allCodes(), '0123').get('0A1B')).toHaveLength(1440);
 
     for (const seed of [1, 2, 3, 42]) {
-      expect(devil(seed).judge('0123')).toEqual({ A: 0, B: 1 });
+      expect(await (await devil(seed)).judge('0123')).toEqual({ A: 0, B: 1 });
     }
   });
 });
 
 describe('DevilCodemaker 惡魔策略', () => {
-  it('每次都回傳「當下最大的那一組」的回饋', () => {
-    const maker = devil(7);
+  it('每次都回傳「當下最大的那一組」的回饋', async () => {
+    const maker = await devil(7);
     let candidates = allCodes();
 
     for (const guess of ['0123', '4567', '1845', '2961', '3708']) {
       const buckets = partition(candidates, guess);
-      const feedback = maker.judge(guess);
+      const feedback = await maker.judge(guess);
 
       const sizes = [...buckets]
         .filter(([k]) => buckets.size === 1 || k !== '4A0B')
@@ -70,97 +70,98 @@ describe('DevilCodemaker 惡魔策略', () => {
     }
   });
 
-  it('候選不只一組時，絕不讓玩家猜中', () => {
+  it('候選不只一組時，絕不讓玩家猜中', async () => {
     const codes = allCodes();
     for (let i = 0; i < codes.length; i += 25) {
-      expect(key(devil(i).judge(codes[i]!))).not.toBe('4A0B');
+      const maker = await devil(i);
+      expect(key(await maker.judge(codes[i]!))).not.toBe('4A0B');
     }
   });
 
-  it('揭曉的答案與至今所有回饋一致（中途放棄也說得通）', () => {
+  it('揭曉的答案與至今所有回饋一致（中途放棄也說得通）', async () => {
     for (const seed of [1, 5, 9, 13]) {
-      const maker = devil(seed);
+      const maker = await devil(seed);
       const history: Array<[string, Feedback]> = [];
 
       for (const guess of ['0123', '4567', '8901', '2345']) {
-        history.push([guess, maker.judge(guess)]);
+        history.push([guess, await maker.judge(guess)]);
       }
 
-      const answer = maker.reveal();
+      const answer = await maker.reveal();
       for (const [guess, feedback] of history) {
         expect(judge(answer, guess)).toEqual(feedback);
       }
     }
   });
 
-  it('開局就揭曉：回傳一組合法密碼', () => {
-    const answer = devil(3).reveal();
+  it('開局就揭曉：回傳一組合法密碼', async () => {
+    const answer = await (await devil(3)).reveal();
     expect(isValidCode(answer)).toBe(true);
   });
 
-  it('reveal 重複呼叫結果固定', () => {
-    const maker = devil(4);
-    maker.judge('0123');
-    const first = maker.reveal();
-    for (let i = 0; i < 5; i += 1) expect(maker.reveal()).toBe(first);
+  it('reveal 重複呼叫結果固定', async () => {
+    const maker = await devil(4);
+    await maker.judge('0123');
+    const first = await maker.reveal();
+    for (let i = 0; i < 5; i += 1) expect(await maker.reveal()).toBe(first);
   });
 
-  it('揭曉後不能再判定', () => {
-    const maker = devil();
-    maker.judge('0123');
-    maker.reveal();
-    expect(() => maker.judge('4567')).toThrow();
+  it('揭曉後不能再判定', async () => {
+    const maker = await devil();
+    await maker.judge('0123');
+    await maker.reveal();
+    await expect(maker.judge('4567')).rejects.toThrow();
   });
 
-  it('重新 startGame 會重置候選與揭曉狀態', () => {
-    const maker = devil(3);
-    maker.judge('0123');
-    maker.judge('4567');
-    maker.reveal();
+  it('重新 startGame 會重置候選與揭曉狀態', async () => {
+    const maker = await devil(3);
+    await maker.judge('0123');
+    await maker.judge('4567');
+    await maker.reveal();
 
-    maker.startGame(DEFAULT_CONFIG);
+    await maker.startGame(DEFAULT_CONFIG);
     // 回到 5040 組，行為與新開一局相同
-    expect(maker.judge('0123')).toEqual({ A: 0, B: 1 });
+    expect(await maker.judge('0123')).toEqual({ A: 0, B: 1 });
   });
 });
 
 describe('DevilCodemaker 決定性與隔離', () => {
-  it('相同 seed 產生完全相同的回饋序列', () => {
+  it('相同 seed 產生完全相同的回饋序列', async () => {
     const guesses = ['0123', '4567', '8901', '2345', '6789'];
-    const a = devil(99);
-    const b = devil(99);
+    const a = await devil(99);
+    const b = await devil(99);
     for (const guess of guesses) {
-      expect(a.judge(guess)).toEqual(b.judge(guess));
+      expect(await a.judge(guess)).toEqual(await b.judge(guess));
     }
-    expect(a.reveal()).toBe(b.reveal());
+    expect(await a.reveal()).toBe(await b.reveal());
   });
 
-  it('兩個實例互不干擾', () => {
-    const a = devil(1);
-    const b = devil(1);
-    a.judge('0123');
-    a.judge('4567');
+  it('兩個實例互不干擾', async () => {
+    const a = await devil(1);
+    const b = await devil(1);
+    await a.judge('0123');
+    await a.judge('4567');
 
-    expect(b.judge('0123')).toEqual({ A: 0, B: 1 });
+    expect(await b.judge('0123')).toEqual({ A: 0, B: 1 });
   });
 
-  it('候選存於私有欄位，無法從外部列舉', () => {
-    const maker = devil();
-    maker.judge('0123');
+  it('候選存於私有欄位，無法從外部列舉', async () => {
+    const maker = await devil();
+    await maker.judge('0123');
     expect(Object.keys(maker)).toEqual([]);
     expect(JSON.stringify(maker)).toBe('{}');
   });
 });
 
 describe('DevilCodemaker 搭配 GameSession', () => {
-  it('「每次猜目前還可能的第一組」的玩家一定會贏，且不超過 10 次', () => {
+  it('「每次猜目前還可能的第一組」的玩家一定會贏，且不超過 10 次', async () => {
     for (let seed = 1; seed <= 20; seed += 1) {
-      const game = new GameSession(new DevilCodemaker(mulberry32(seed)));
+      const game = await GameSession.create(new DevilCodemaker(mulberry32(seed)));
       let candidates = allCodes();
 
       while (game.status === 'playing' && game.guessCount < 12) {
         const guess = candidates[0]!;
-        const result = game.submitGuess(guess);
+        const result = await game.submitGuess(guess);
         if (!result.ok) throw new Error(`seed ${seed} 送出失敗：${result.reason}`);
 
         const feedbackKey = key(result.record.feedback);
@@ -169,31 +170,31 @@ describe('DevilCodemaker 搭配 GameSession', () => {
 
       expect(game.status).toBe('won');
       expect(game.guessCount).toBeLessThanOrEqual(10);
-      expect(game.getAnswer()).toBe(game.guesses.at(-1)!.guess);
+      expect(await game.getAnswer()).toBe(game.guesses.at(-1)!.guess);
     }
   });
 
-  it('透過 GameSession 第一次猜測也不會中', () => {
-    const game = new GameSession(new DevilCodemaker(mulberry32(1)));
-    expect(game.submitGuess('5970').ok).toBe(true);
+  it('透過 GameSession 第一次猜測也不會中', async () => {
+    const game = await GameSession.create(new DevilCodemaker(mulberry32(1)));
+    expect((await game.submitGuess('5970')).ok).toBe(true);
     expect(game.status).toBe('playing');
   });
 
-  it('中途放棄時揭曉的答案與歷史紀錄全部一致', () => {
-    const game = new GameSession(new DevilCodemaker(mulberry32(11)));
-    for (const guess of ['0123', '4567', '8912']) game.submitGuess(guess);
+  it('中途放棄時揭曉的答案與歷史紀錄全部一致', async () => {
+    const game = await GameSession.create(new DevilCodemaker(mulberry32(11)));
+    for (const guess of ['0123', '4567', '8912']) await game.submitGuess(guess);
 
     expect(game.surrender()).toBe(true);
-    const answer = game.getAnswer()!;
+    const answer = (await game.getAnswer())!;
     for (const record of game.guesses) {
       expect(judge(answer, record.guess)).toEqual(record.feedback);
     }
-    expect(game.getAnswer()).toBe(answer);
+    expect(await game.getAnswer()).toBe(answer);
   });
 
-  it('開局就放棄：揭曉一組合法答案', () => {
-    const game = new GameSession(new DevilCodemaker(mulberry32(2)));
+  it('開局就放棄：揭曉一組合法答案', async () => {
+    const game = await GameSession.create(new DevilCodemaker(mulberry32(2)));
     game.surrender();
-    expect(isValidCode(game.getAnswer()!)).toBe(true);
+    expect(isValidCode((await game.getAnswer())!)).toBe(true);
   });
 });

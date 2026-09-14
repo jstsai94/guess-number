@@ -27,9 +27,9 @@
 
 ```ts
 interface Codemaker {
-  startGame(config: GameConfig): void;
-  judge(guess: Code): Feedback;
-  reveal(): Code;
+  startGame(config: GameConfig): Promise<void>;
+  judge(guess: Code): Promise<Feedback>;
+  reveal(): Promise<Code>;
 }
 ```
 
@@ -41,13 +41,16 @@ interface Codemaker {
 
 `GameSession` 與 UI 不需要知道用的是哪一種 Codemaker。
 
-> 第二期 C 階段會把三個方法改成**非同步**（回傳 `Promise`），以支援網路判定。
-> 方法仍然只有三個。C 完成前，維持上面的同步簽名。
+三個方法都是**非同步**的：本地實作立刻完成，連線對戰則要等網路回應。
+
+- 開局一律用 `await GameSession.create(codemaker)`；建構子是 private，不要直接 `new`
+- 等待判定期間再送出，`submitGuess` 會以 `'pending'` 擋下，不計次
+- 判定失敗時例外往外拋，該組數字不計次、不記為已猜過，可以重送
 
 ### 2. UI 層絕對不可以直接讀取答案
 
 - UI 只拿得到 `GameSession`，拿不到 `Codemaker`
-- `GameSession.getAnswer()` 在 `status === 'playing'` 時**一律回傳 `null`**
+- `GameSession.getAnswer()` 在 `status === 'playing'` 時**一律解析為 `null`**
 - Codemaker 的答案與候選一律存在 JS 私有欄位（`#answer`、`#candidates`），
   即使 `as any` 也讀不到 —— 這是刻意的，不要改成一般欄位
 

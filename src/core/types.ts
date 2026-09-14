@@ -37,7 +37,7 @@ export interface GuessRecord {
   readonly index: number;
   readonly guess: Code;
   readonly feedback: Feedback;
-  /** 送出當下的 timestamp（毫秒）。 */
+  /** 判定完成、寫入歷史當下的 timestamp（毫秒）。 */
   readonly at: number;
 }
 
@@ -47,10 +47,12 @@ export type RejectReason =
   | 'invalid'
   /** 這組數字先前已經猜過 */
   | 'duplicate'
-  /** 這一局已經結束（獲勝或放棄） */
+  /** 這一局已經結束（獲勝或放棄），或在等待判定期間結束 */
   | 'finished'
   /** 這一局暫停中，暫停期間不接受任何猜測 */
-  | 'paused';
+  | 'paused'
+  /** 上一次猜測還在等待判定（連線對戰時可能發生），不接受新的猜測 */
+  | 'pending';
 
 /** submitGuess 的回傳值。被擋下時不計次。 */
 export type SubmitResult =

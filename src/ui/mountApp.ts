@@ -23,15 +23,16 @@ export function mountApp(root: HTMLElement): void {
   };
 
   const showMenu = (): void => {
-    show(createMenuView({ onStart: startGame }));
+    show(createMenuView({ onStart: (difficulty) => void startGame(difficulty) }));
   };
 
-  const startGame = (difficulty: Difficulty): void => {
-    const session = new GameSession(createCodemaker(difficulty));
+  const startGame = async (difficulty: Difficulty): Promise<void> => {
+    // 開局是非同步的：本地模式立刻完成，連線對戰要等房間準備好
+    const session = await GameSession.create(createCodemaker(difficulty));
     show(
       createGameView(session, {
         difficulty,
-        onRestart: () => startGame(difficulty),
+        onRestart: () => void startGame(difficulty),
         onMenu: showMenu,
       }),
     );

@@ -20,6 +20,7 @@ import { judge } from './judge';
  * 玩家中途放棄時揭曉的答案也說得通。揭曉之後答案固定，不能再判定。
  *
  * 候選與揭曉結果都存在 JS 私有欄位，外部無從讀取。
+ * 介面是非同步的，但計算都在本地，Promise 會立刻完成。
  */
 export class DevilCodemaker implements Codemaker {
   readonly #rng: Rng;
@@ -31,13 +32,13 @@ export class DevilCodemaker implements Codemaker {
     this.#rng = rng;
   }
 
-  startGame(config: GameConfig): void {
+  async startGame(config: GameConfig): Promise<void> {
     this.#config = config;
     this.#candidates = allCodes(config);
     this.#revealed = null;
   }
 
-  judge(guess: Code): Feedback {
+  async judge(guess: Code): Promise<Feedback> {
     const candidates = this.#requireCandidates();
     if (this.#revealed !== null) {
       throw new Error('DevilCodemaker.judge: 答案已揭曉，不能再判定');
@@ -71,7 +72,7 @@ export class DevilCodemaker implements Codemaker {
     return chosen.feedback;
   }
 
-  reveal(): Code {
+  async reveal(): Promise<Code> {
     const candidates = this.#requireCandidates();
     if (this.#revealed === null) {
       this.#revealed = candidates[pickIndex(this.#rng, candidates.length)]!;

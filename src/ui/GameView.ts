@@ -1,4 +1,4 @@
-import type { CodeIssue, GameSession, RejectReason } from '../core';
+import type { CodeIssue, GameSession, RejectReason, SubmitResult } from '../core';
 import { validateCode } from '../core';
 import { el, formatDuration } from './dom';
 import { createConfirmDialog } from './ConfirmDialog';
@@ -54,7 +54,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   const history = createHistoryList();
   const input = createGuessInput({
     length: codeLength,
-    onSubmit: (code) => handleSubmit(code),
+    onSubmit: (code) => void handleSubmit(code),
   });
 
   // 兩種提示同時存在，由 CSS 依裝置決定顯示哪一個
@@ -121,7 +121,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
 
   // ---------- 送出 ----------
 
-  function handleSubmit(code: string): void {
+  async function handleSubmit(code: string): Promise<void> {
     const issue = validateCode(code, session.config);
     if (issue !== null) {
       showError(describeIssue(issue));
@@ -135,7 +135,14 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
       return;
     }
 
-    const outcome = session.submitGuess(code);
+    let outcome: SubmitResult;
+    try {
+      outcome = await session.submitGuess(code);
+    } catch {
+      // 本地模式不會發生；連線對戰時可能因為網路中斷而判定失敗，這組數字不計次、可以重送
+      showError('判定失敗，請再送出一次');
+      return;
+    }
     if (!outcome.ok) {
       showError(describeReject(outcome.reason));
       return;
@@ -147,7 +154,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
 
     const { A, B } = outcome.record.feedback;
     if (session.status === 'won') {
-      finish();
+      await finish();
       return;
     }
     if (A === 0 && B === 0) {
@@ -184,7 +191,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     if (!session.surrender()) return;
 
     render();
-    finish();
+    await finish();
   }
 
   // ---------- 0A0B 自動輔助 ----------
@@ -204,7 +211,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
 
   // ---------- 結算 ----------
 
-  function finish(): void {
+  async function finish(): Promise<void> {
     stopTimer();
     input.setEnabled(false);
     pauseButton.hidden = true;
@@ -213,11 +220,12 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     const outcome = session.status === 'won' ? 'won' : 'surrendered';
     statsPanel.render(recordResult(options.difficulty, outcome, session.guessCount));
 
+    const answer = (await session.getAnswer()) ?? '';
     result.show({
       outcome,
       guessCount: session.guessCount,
       elapsedMs: session.elapsedMs,
-      answer: session.getAnswer() ?? '',
+      answer,
     });
   }
 
@@ -305,6 +313,8 @@ function describeReject(reason: RejectReason): string {
       return '這一局已經結束了';
     case 'paused':
       return '遊戲暫停中';
+    case 'pending':
+      return '上一次猜測還在判定中';
     case 'invalid':
     case 'duplicate':
       return '這組數字不能送出';
