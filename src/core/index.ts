@@ -25,4 +25,6 @@ export { GameNotes } from './GameNotes';
 export { LocalRandomCodemaker } from './LocalRandomCodemaker';
 export { DevilCodemaker } from './DevilCodemaker';
 export { GameSession } from './GameSession';
+export { decideMatch, verifyFeedbackHistory } from './versus';
+export type { FeedbackCheck, MatchReason, MatchResult, MatchSide, VersusPlayer } from './versus';
 export type { GameSessionOptions } from './GameSession';
