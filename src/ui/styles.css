@@ -809,6 +809,145 @@ button:focus-visible {
   line-height: 1.6;
 }
 
+/* ---------- 電腦解題 ---------- */
+
+.solver-setup {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.solver-intro {
+  margin: -6px 0 20px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.solver-setup-actions {
+  display: flex;
+  margin-top: 18px;
+}
+
+.solver-secret {
+  font-family: var(--mono);
+}
+
+.solver-controls,
+.solver-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.solver-done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.solver-controls[hidden],
+.solver-done[hidden] {
+  display: none;
+}
+
+.solver-done-title {
+  color: var(--a-color);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.solver-empty {
+  margin: 20px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.solver-explain .solver-empty {
+  margin-top: 0;
+}
+
+/* 猜測紀錄的每一列是按鈕：點了在右欄看那一步的說明 */
+.solver-row {
+  width: 100%;
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.solver-row:hover {
+  border-color: var(--line-strong);
+}
+
+.solver-row.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.solver-step-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: var(--row-bg);
+}
+
+.solver-step-label {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.solver-step-head .history-guess {
+  font-size: 24px;
+}
+
+.solver-step-head .history-result {
+  font-size: 26px;
+}
+
+.solver-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.2em;
+  line-height: 1.6;
+}
+
+.solver-none {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (min-width: 1001px) {
+  /* 單機模式三張卡片並排 */
+  .mode-grid.is-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .solver-intro {
+    font-size: 16px;
+  }
+
+  .solver-step-head .history-guess {
+    font-size: 26px;
+  }
+
+  .solver-step-head .history-result {
+    font-size: 29px;
+  }
+}
+
+/* 觸控裝置上 .panel-left 會替數字格、提示、鍵盤排序；「回到選單」固定排在最後 */
+@media (any-pointer: coarse), (max-width: 720px) {
+  .solver-setup-actions {
+    order: 5;
+  }
+}
+
 /* ======================================================================
  * 觸控裝置：顯示頁面內建數字鍵盤，收掉行內送出按鈕
  * ====================================================================== */

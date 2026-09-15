@@ -1,6 +1,7 @@
 import { GameSession } from '../core';
 import { createGameView } from './GameView';
 import { createMenuView } from './MenuView';
+import { createSolverView } from './SolverView';
 import { createCodemaker } from './difficulty';
 import type { Difficulty } from './difficulty';
 
@@ -10,7 +11,7 @@ interface ScreenHandle {
 }
 
 /**
- * 掛載應用：在「模式選擇」「猜電腦」「連線對戰」幾個畫面之間切換。
+ * 掛載應用：在「模式選擇」「單機模式（猜數字、電腦解題）」「連線模式」幾個畫面之間切換。
  *
  * 「目前顯示哪個畫面」是 mountApp 的區域變數，不是模組層級的全域狀態 ——
  * 要在同一頁掛兩份，直接呼叫兩次即可。
@@ -29,6 +30,7 @@ export function mountApp(root: HTMLElement): void {
     show(
       createMenuView({
         onStart: (difficulty) => void startGame(difficulty),
+        onSolve: () => startSolver(),
         versus: {
           onCreateRoom: () => void startVersus('host'),
           onJoinRoom: () => void startVersus('join'),
@@ -47,6 +49,10 @@ export function mountApp(root: HTMLElement): void {
         onMenu: showMenu,
       }),
     );
+  };
+
+  const startSolver = (): void => {
+    show(createSolverView({ onRestart: startSolver, onMenu: showMenu }));
   };
 
   const startVersus = async (mode: 'host' | 'join'): Promise<void> => {

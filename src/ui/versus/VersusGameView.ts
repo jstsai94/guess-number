@@ -157,7 +157,7 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
   async function handleSurrender(): Promise<void> {
     const confirmed = await confirm.ask({
       title: '確定要放棄這一局嗎？',
-      message: '連線對戰中放棄會直接判負。',
+      message: '連線模式中放棄會直接判負。',
       confirmText: '確定放棄',
       cancelText: '再想想',
     });

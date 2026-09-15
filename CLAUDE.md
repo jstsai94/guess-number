@@ -38,6 +38,8 @@ interface Codemaker {
 - `LocalRandomCodemaker` — 一般模式：開局隨機抽一組答案，之後不變
 - `DevilCodemaker` — 惡魔模式：不預先決定答案，每次保留最大的候選分組
 - 連線對戰的實作（對手裝置判定、伺服器判定）放在 `src/online/`，**不放進 `core`**
+- 電腦解題（玩家出題、電腦猜）**不是** Codemaker：猜法與推理在 `core/solver.ts`，
+  只回傳結構化的推理結果，中文說明由 UI 層（`SolverView`）負責
 
 `GameSession` 與 UI 不需要知道用的是哪一種 Codemaker。
 
@@ -71,6 +73,7 @@ src/
 │  ├─ codeGenerator.ts       產生答案、列舉所有答案、合法性檢查
 │  ├─ LocalRandomCodemaker.ts  一般模式
 │  ├─ DevilCodemaker.ts      惡魔模式
+│  ├─ solver.ts              電腦解題：最壞情況最少的猜法與推理結果
 │  ├─ GameNotes.ts           一局的筆記狀態
 │  ├─ GameSession.ts         一局遊戲（含暫停、放棄）
 │  ├─ index.ts               對外出入口
