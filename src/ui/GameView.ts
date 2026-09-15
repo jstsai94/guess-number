@@ -10,7 +10,7 @@ import { createNotesBoard } from './NotesBoard';
 import { createPauseOverlay } from './PauseOverlay';
 import { createResultOverlay } from './ResultOverlay';
 import { createStatsPanel } from './StatsPanel';
-import { loadStats, recordResult } from './statsStore';
+import { countsTowardStats, loadStats, recordResult } from './statsStore';
 
 const HINT_KEYBOARD = '輸入 4 個不重複的數字，可用鍵盤直接打';
 const HINT_TOUCH = '輸入 4 個不重複的數字，用下方數字鍵盤輸入';
@@ -178,7 +178,9 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   async function handleSurrender(): Promise<void> {
     const confirmed = await confirm.ask({
       title: '確定要放棄這一局嗎？',
-      message: '放棄後會直接揭曉答案，本局在統計上記為放棄。',
+      message: countsTowardStats('surrendered', session.guessCount)
+        ? '放棄後會直接揭曉答案，本局在統計上記為放棄。'
+        : '放棄後會直接揭曉答案。還沒猜到 2 次，這一局不列入統計。',
       confirmText: '確定放棄',
       cancelText: '再想想',
     });
@@ -217,7 +219,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     clearError();
 
     const outcome = session.status === 'won' ? 'won' : 'surrendered';
-    statsPanel.render(recordResult(options.difficulty, outcome, session.guessCount));
+    statsPanel.render(recordResult(options.difficulty, outcome, session.guessCount, session.elapsedMs));
 
     const answer = (await session.getAnswer()) ?? '';
     result.show({

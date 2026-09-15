@@ -922,6 +922,53 @@ button:focus-visible {
   color: var(--text-muted);
 }
 
+/* 為什麼猜這組：每種回饋會剩下幾組 */
+.solver-outcomes {
+  margin-top: 12px;
+}
+
+.solver-outcomes-caption {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.solver-outcome-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.solver-outcome {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.solver-outcome-feedback {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.solver-outcome-count {
+  color: var(--text-muted);
+}
+
+.solver-outcome.is-worst .solver-outcome-count {
+  color: var(--b-color);
+  font-weight: 600;
+}
+
+.solver-outcome.is-actual {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
 @media (min-width: 1001px) {
   /* 單機模式三張卡片並排 */
   .mode-grid.is-three {

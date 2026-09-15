@@ -26,7 +26,7 @@ export { LocalRandomCodemaker } from './LocalRandomCodemaker';
 export { DevilCodemaker } from './DevilCodemaker';
 export { GameSession } from './GameSession';
 export { chooseGuess, solveCode } from './solver';
-export type { Conclusion, Reading, SolverStep } from './solver';
+export type { Conclusion, GuessDigitRole, GuessOutcome, GuessReason, Reading, SolverStep } from './solver';
 export { decideMatch, verifyFeedbackHistory } from './versus';
 export type { FeedbackCheck, MatchReason, MatchResult, MatchSide, VersusPlayer } from './versus';
 export type { GameSessionOptions } from './GameSession';

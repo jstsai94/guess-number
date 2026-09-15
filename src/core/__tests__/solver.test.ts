@@ -203,3 +203,91 @@ describe('推理結果', () => {
     SLOW,
   );
 });
+
+describe('為什麼猜這組', () => {
+  it('開局：5040 組都有可能，猜 0123 最壞剩 1440 組', () => {
+    const { reason } = solved('4721')[0]!;
+    expect(reason.kind).toBe('opening');
+    expect(reason.candidatesBefore).toBe(5040);
+    expect(reason.worst).toBe(1440);
+    expect(reason.outcomes[0]).toEqual({ feedback: { A: 0, B: 1 }, remaining: 1440 });
+    expect(reason.digitRoles.every((r) => r.role === 'unknown')).toBe(true);
+  });
+
+  it(
+    '回饋分布與實際過程一致',
+    () => {
+      for (const secret of SAMPLE) {
+        const steps = solved(secret);
+        steps.forEach((step, i) => {
+          const { reason } = step;
+          const total = reason.outcomes.reduce((sum, o) => sum + o.remaining, 0);
+          expect(total).toBe(reason.candidatesBefore);
+          expect(reason.worst).toBe(Math.max(...reason.outcomes.map((o) => o.remaining)));
+          expect(reason.average).toBeGreaterThanOrEqual(1);
+          expect(reason.average).toBeLessThanOrEqual(reason.worst);
+
+          // 實際得到的回饋一定在分布裡，而且剩下的組數就是下一步猜之前的組數
+          const actual = reason.outcomes.find((o) => o.feedback.A === step.feedback.A && o.feedback.B === step.feedback.B);
+          expect(actual).toBeDefined();
+          const next = steps[i + 1];
+          if (next) expect(next.reason.candidatesBefore).toBe(actual!.remaining);
+
+          if (reason.candidatesBefore === 1) expect(reason.kind).toBe('last-one');
+        });
+      }
+    },
+    SLOW,
+  );
+
+  it(
+    '猜不可能的答案時，是因為只從可能的答案裡挑會更差',
+    () => {
+      let seen = 0;
+      for (const secret of SAMPLE) {
+        for (const { reason } of solved(secret)) {
+          if (reason.isCandidate) {
+            expect(reason.bestCandidateWorst).toBeNull();
+          } else {
+            expect(reason.bestCandidateWorst).toBeGreaterThan(reason.worst);
+            seen += 1;
+          }
+        }
+      }
+      expect(seen).toBeGreaterThan(0);
+    },
+    SLOW,
+  );
+
+  it(
+    '每個數字的狀態都與密碼相符',
+    () => {
+      for (const secret of SAMPLE) {
+        for (const step of solved(secret)) {
+          for (const r of step.reason.digitRoles) {
+            expect(step.guess[r.position]).toBe(r.digit);
+            switch (r.role) {
+              case 'excluded':
+                expect(secret.includes(r.digit)).toBe(false);
+                break;
+              case 'confirmed-here':
+                expect(r.confirmedPosition).toBe(r.position);
+                expect(secret[r.position]).toBe(r.digit);
+                break;
+              case 'confirmed-elsewhere':
+                expect(r.confirmedPosition).not.toBe(r.position);
+                expect(secret[r.confirmedPosition!]).toBe(r.digit);
+                break;
+              case 'known-present':
+                expect(secret.includes(r.digit)).toBe(true);
+                break;
+              case 'unknown':
+                break;
+            }
+          }
+        }
+      }
+    },
+    SLOW,
+  );
+});

@@ -1,4 +1,4 @@
-import { el } from './dom';
+import { el, formatDuration } from './dom';
 import type { Stats } from './statsStore';
 
 export interface StatsPanelHandle {
@@ -27,7 +27,13 @@ export function createStatsPanel(caption: string): StatsPanelHandle {
     render(stats): void {
       totalValue.textContent = `${stats.total}`;
       winsValue.textContent = `${stats.wins}`;
-      bestValue.textContent = stats.bestGuessCount === null ? '—' : `${stats.bestGuessCount} 次`;
+      // 最佳紀錄含用時，例如「4 次 · 01:23」；舊紀錄沒有時間時只顯示次數
+      bestValue.textContent =
+        stats.bestGuessCount === null
+          ? '—'
+          : stats.bestElapsedMs === null
+            ? `${stats.bestGuessCount} 次`
+            : `${stats.bestGuessCount} 次 · ${formatDuration(stats.bestElapsedMs)}`;
     },
   };
 }

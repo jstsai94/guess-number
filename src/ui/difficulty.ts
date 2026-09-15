@@ -15,11 +15,6 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   devil: '惡魔',
 };
 
-export const DIFFICULTY_DESCRIPTION: Record<Difficulty, string> = {
-  normal: '電腦開局就決定答案，之後不會改變。',
-  devil: '電腦不先決定答案，每次都挑讓你最難縮小範圍的回饋，不可能矇中。',
-};
-
 /**
  * 依難度建立出題者。
  *

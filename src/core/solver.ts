@@ -35,12 +35,59 @@ export type Conclusion =
   | { readonly kind: 'position-impossible'; readonly position: number; readonly digits: readonly string[] }
   | { readonly kind: 'only-one-left'; readonly code: Code };
 
+/** 猜了這組之後，某一種回饋會剩下幾組可能（猜中那一種剩 1 組）。 */
+export interface GuessOutcome {
+  readonly feedback: Feedback;
+  readonly remaining: number;
+}
+
+/** 猜的某一個數字，在猜之前已知的狀態。 */
+export interface GuessDigitRole {
+  readonly digit: string;
+  /** 放在第幾格，由 0 起算 */
+  readonly position: number;
+  readonly role:
+    /** 已確定不在答案裡：只用來佔位置 */
+    | 'excluded'
+    /** 已確定在這一格：放在原位 */
+    | 'confirmed-here'
+    /** 已確定在別格：放在這裡只是佔位置 */
+    | 'confirmed-elsewhere'
+    /** 確定在答案裡但還不知道在哪一格：測試位置 */
+    | 'known-present'
+    /** 還不確定在不在答案裡：主要測試對象 */
+    | 'unknown';
+  /** 已確定在哪一格（confirmed-here／confirmed-elsewhere），否則 null */
+  readonly confirmedPosition: number | null;
+}
+
+/** 為什麼猜這組：猜之前的判斷。 */
+export interface GuessReason {
+  /** opening：開局；last-one：只剩一種可能；strategy：依最壞情況最少挑選 */
+  readonly kind: 'opening' | 'last-one' | 'strategy';
+  /** 猜之前還有幾組可能 */
+  readonly candidatesBefore: number;
+  /** 這組本身是否還可能是答案 */
+  readonly isCandidate: boolean;
+  /** 每一種可能的回饋會剩下幾組，依組數由多到少 */
+  readonly outcomes: readonly GuessOutcome[];
+  /** 最壞情況剩幾組 */
+  readonly worst: number;
+  /** 平均剩幾組：各回饋出現的機率 × 剩下組數（= 平方和 ÷ 總組數） */
+  readonly average: number;
+  /** 這組不可能是答案時：如果只從可能的答案裡挑，最好的最壞情況是幾組；否則 null */
+  readonly bestCandidateWorst: number | null;
+  /** 猜的 4 個數字各自的狀態，依位置排列 */
+  readonly digitRoles: readonly GuessDigitRole[];
+}
+
 /** 電腦的一次猜測。 */
 export interface SolverStep {
   /** 第幾次猜，從 1 開始。 */
   readonly index: number;
   readonly guess: Code;
   readonly feedback: Feedback;
+  readonly reason: GuessReason;
   readonly readings: readonly Reading[];
   /** 猜中的那一步沒有結論。 */
   readonly conclusions: readonly Conclusion[];
@@ -272,6 +319,74 @@ function concludeStep(
   return conclusions;
 }
 
+// ---------- 為什麼猜這組 ----------
+
+/** 猜 g 時最壞情況剩幾組；counts 為呼叫端提供的暫存陣列，會被覆寫。 */
+function worstOf(g: number, candidates: readonly number[], counts: Int32Array): number {
+  counts.fill(0);
+  let worst = 0;
+  for (const c of candidates) {
+    const key = feedbackKey(g, c);
+    const n = counts[key]! + 1;
+    counts[key] = n;
+    if (n > worst) worst = n;
+  }
+  return worst;
+}
+
+function explainGuess(g: number, candidates: readonly number[], before: Knowledge): GuessReason {
+  const counts = new Int32Array(FEEDBACK_KEYS);
+  const worst = worstOf(g, candidates, counts);
+
+  const outcomes: GuessOutcome[] = [];
+  let spread = 0;
+  for (let key = 0; key < FEEDBACK_KEYS; key += 1) {
+    const remaining = counts[key]!;
+    if (remaining === 0) continue;
+    spread += remaining * remaining;
+    outcomes.push({ feedback: { A: Math.floor(key / 5), B: key % 5 }, remaining });
+  }
+  outcomes.sort((x, y) => y.remaining - x.remaining || y.feedback.A - x.feedback.A || y.feedback.B - x.feedback.B);
+
+  const isCandidate = candidates.includes(g);
+  let bestCandidateWorst: number | null = null;
+  if (!isCandidate) {
+    let best = Number.POSITIVE_INFINITY;
+    for (const c of candidates) best = Math.min(best, worstOf(c, candidates, counts));
+    bestCandidateWorst = best;
+  }
+
+  const digitRoles: GuessDigitRole[] = [];
+  for (let p = 0; p < CODE_LENGTH; p += 1) {
+    const d = DIGITS[g * CODE_LENGTH + p]!;
+    let confirmedPosition: number | null = null;
+    for (let q = 0; q < CODE_LENGTH; q += 1) {
+      if (isConfirmed(before, q, d)) confirmedPosition = q;
+    }
+    const role: GuessDigitRole['role'] = isExcluded(before, d)
+      ? 'excluded'
+      : confirmedPosition === p
+        ? 'confirmed-here'
+        : confirmedPosition !== null
+          ? 'confirmed-elsewhere'
+          : isRequired(before, d)
+            ? 'known-present'
+            : 'unknown';
+    digitRoles.push({ digit: String(d), position: p, role, confirmedPosition });
+  }
+
+  return {
+    kind: candidates.length === CODES.length ? 'opening' : candidates.length === 1 ? 'last-one' : 'strategy',
+    candidatesBefore: candidates.length,
+    isCandidate,
+    outcomes,
+    worst,
+    average: spread / candidates.length,
+    bestCandidateWorst,
+    digitRoles,
+  };
+}
+
 // ---------- 解題 ----------
 
 /**
@@ -299,6 +414,7 @@ export function solveCode(secret: Code): SolverStep[] {
       index: steps.length + 1,
       guess,
       feedback,
+      reason: explainGuess(g, candidates, before),
       readings,
       conclusions: solved ? [] : concludeStep(before, after, readings, remaining),
     });

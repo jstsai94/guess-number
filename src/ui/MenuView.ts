@@ -1,6 +1,6 @@
 import { el } from './dom';
 import type { Difficulty } from './difficulty';
-import { DIFFICULTIES, DIFFICULTY_DESCRIPTION, DIFFICULTY_LABEL } from './difficulty';
+import { DIFFICULTIES, DIFFICULTY_LABEL } from './difficulty';
 
 export interface MenuViewOptions {
   /** 點選難度卡片時觸發，由外層開新局。 */
@@ -19,10 +19,11 @@ export interface MenuViewHandle {
   destroy(): void;
 }
 
-function modeCard(label: string, description: string, className: string, onClick: () => void): HTMLButtonElement {
+/** description 為 null 時卡片只顯示名稱（一般、惡魔）。 */
+function modeCard(label: string, description: string | null, className: string, onClick: () => void): HTMLButtonElement {
   const card = el('button', { class: `mode-card ${className}`, type: 'button' }, [
     el('span', { class: 'mode-card-label', text: label }),
-    el('span', { class: 'mode-card-desc', text: description }),
+    ...(description ? [el('span', { class: 'mode-card-desc', text: description })] : []),
   ]);
   card.addEventListener('click', onClick);
   return card;
@@ -31,7 +32,7 @@ function modeCard(label: string, description: string, className: string, onClick
 /** 模式選擇畫面：單機模式（一般／惡魔／電腦解題），以及連線模式（建立房間／加入房間）。 */
 export function createMenuView(options: MenuViewOptions): MenuViewHandle {
   const difficultyCards = DIFFICULTIES.map((difficulty) =>
-    modeCard(DIFFICULTY_LABEL[difficulty], DIFFICULTY_DESCRIPTION[difficulty], `is-${difficulty}`, () =>
+    modeCard(DIFFICULTY_LABEL[difficulty], null, `is-${difficulty}`, () =>
       options.onStart(difficulty),
     ),
   );

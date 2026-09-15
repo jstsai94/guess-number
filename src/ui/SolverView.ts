@@ -1,4 +1,4 @@
-import type { CodeIssue, Conclusion, Reading, SolverStep } from '../core';
+import type { CodeIssue, Conclusion, GuessDigitRole, Reading, SolverStep } from '../core';
 import { solveCode, validateCode } from '../core';
 import { el } from './dom';
 import { createGuessInput } from './GuessInput';
@@ -274,6 +274,7 @@ function renderStep(step: SolverStep): HTMLElement[] {
         el('span', { class: 'res-b', text: `${B}B` }),
       ]),
     ]),
+    ...renderReason(step),
     el('div', { class: 'notes-section-title', text: '這次回饋告訴我們' }),
     list(step.readings.map(describeReading)),
   ];
@@ -288,6 +289,93 @@ function renderStep(step: SolverStep): HTMLElement[] {
   }
 
   return parts;
+}
+
+/** 「為什麼猜這組」：猜之前的判斷，以及每種回饋會剩下幾組。 */
+function renderReason(step: SolverStep): HTMLElement[] {
+  const { reason } = step;
+  const title = el('div', { class: 'notes-section-title', text: '為什麼猜這組' });
+
+  if (reason.kind === 'last-one') {
+    return [title, list(['前面的回饋已經把範圍縮到只剩這一組，直接猜它。'])];
+  }
+
+  const lines: string[] = [];
+  if (reason.kind === 'opening') {
+    lines.push(
+      `一開始 ${reason.candidatesBefore} 組都有可能。任何 4 個不同數字的效果都一樣（只是把數字換個名字），所以直接從 ${step.guess} 開始。`,
+    );
+    lines.push(`猜完之後，不管得到哪種回饋，最多剩 ${reason.worst} 組、平均剩 ${formatAverage(reason.average)} 組。`);
+  } else {
+    lines.push(`猜之前還有 ${reason.candidatesBefore} 組可能。`);
+    lines.push(...describeRoles(reason.digitRoles));
+    lines.push(
+      reason.isCandidate || reason.bestCandidateWorst === null
+        ? '這組本身還可能是答案，有機會直接猜中。'
+        : `這組本身已經不可能是答案，但能把剩下的可能分得更平均；如果只從可能的答案裡挑，最壞會剩 ${reason.bestCandidateWorst} 組。`,
+    );
+    lines.push(
+      `不管得到哪種回饋，最多只剩 ${reason.worst} 組、平均剩 ${formatAverage(reason.average)} 組，是所有猜法裡最壞情況最少的。`,
+    );
+  }
+
+  return [title, list(lines), renderOutcomes(step)];
+}
+
+/** 把猜的數字依已知狀態分組說明：哪些是這次要測試的、哪些只是佔位置。 */
+function describeRoles(roles: readonly GuessDigitRole[]): string[] {
+  const digitsOf = (role: GuessDigitRole['role']): string[] => roles.filter((r) => r.role === role).map((r) => r.digit);
+  const lines: string[] = [];
+
+  const unknown = digitsOf('unknown');
+  if (unknown.length > 0) {
+    lines.push(`${joinDigits(unknown)} 還不確定在不在答案裡，這次主要測試${unknown.length === 1 ? '它' : '它們'}。`);
+  }
+
+  const present = digitsOf('known-present');
+  if (present.length > 0) {
+    lines.push(`${joinDigits(present)} 確定在答案裡，這次測試${present.length === 1 ? '它' : '它們'}在哪一格。`);
+  }
+
+  const here = roles.filter((r) => r.role === 'confirmed-here');
+  if (here.length > 0) {
+    lines.push(`${here.map((r) => `${r.digit} 已確定在第 ${r.position + 1} 格`).join('、')}，放在原位。`);
+  }
+
+  const excluded = digitsOf('excluded');
+  if (excluded.length > 0) {
+    lines.push(`${joinDigits(excluded)} 已確定不在答案裡，只用來佔位置，讓回饋只反映其他數字。`);
+  }
+
+  for (const r of roles.filter((role) => role.role === 'confirmed-elsewhere')) {
+    lines.push(`${r.digit} 已確定在第 ${(r.confirmedPosition ?? 0) + 1} 格，放在第 ${r.position + 1} 格只是佔位置。`);
+  }
+
+  return lines;
+}
+
+/** 每種回饋會剩下幾組：最壞情況標橘色，實際得到的回饋加藍框。 */
+function renderOutcomes(step: SolverStep): HTMLElement {
+  const { A, B } = step.feedback;
+  const chips = step.reason.outcomes.map((outcome) => {
+    const classes = ['solver-outcome'];
+    if (outcome.remaining === step.reason.worst) classes.push('is-worst');
+    if (outcome.feedback.A === A && outcome.feedback.B === B) classes.push('is-actual');
+    const solved = outcome.feedback.A === CODE_LENGTH;
+    return el('span', { class: classes.join(' ') }, [
+      el('span', { class: 'solver-outcome-feedback', text: `${outcome.feedback.A}A${outcome.feedback.B}B` }),
+      el('span', { class: 'solver-outcome-count', text: solved ? '猜中' : `剩 ${outcome.remaining} 組` }),
+    ]);
+  });
+
+  return el('div', { class: 'solver-outcomes' }, [
+    el('div', { class: 'solver-outcomes-caption', text: '每種回饋會剩下幾組（橘字是最壞情況，藍框是實際得到的回饋）' }),
+    el('div', { class: 'solver-outcome-grid' }, chips),
+  ]);
+}
+
+function formatAverage(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function list(items: readonly string[]): HTMLElement {
