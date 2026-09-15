@@ -33,17 +33,10 @@ const POSITION_LABEL: Record<PositionMark, string> = {
   confirmed: '確定',
 };
 
-/** 位置推理表格子上顯示的符號。 */
-const POSITION_GLYPH: Record<PositionMark, string> = {
-  possible: '',
-  impossible: '✕',
-  confirmed: '●',
-};
-
 /**
  * 筆記板：
  *   1. 數字狀態列 —— 這個數字在不在答案裡
- *   2. 位置推理表 —— 這個數字能不能放在第 N 位
+ *   2. 位置推理表 —— 以「第幾格」為一列，這一格可不可能是某個數字
  *
  * 狀態直接讀寫傳入的 GameNotes（屬於這一局），這個元件自己不存狀態。
  */
@@ -72,20 +65,13 @@ export function createNotesBoard(notes: GameNotes, codeLength: number): NotesBoa
 
   // ---------- 位置推理表 ----------
 
-  const positionRows: HTMLElement[] = [
-    el('div', { class: 'pos-row pos-head' }, [
-      el('span', { class: 'pos-digit-label' }),
-      ...Array.from({ length: codeLength }, (_, i) =>
-        el('span', { class: 'pos-head-cell', text: `${i + 1}` }),
-      ),
-    ]),
-  ];
+  const positionRows: HTMLElement[] = [];
 
-  for (const digit of NOTE_DIGITS) {
-    const cells: HTMLElement[] = [el('span', { class: 'pos-digit-label', text: digit })];
+  for (let position = 0; position < codeLength; position += 1) {
+    const cells: HTMLElement[] = [el('span', { class: 'pos-label', text: `第${position + 1}格` })];
 
-    for (let position = 0; position < codeLength; position += 1) {
-      const cell = el('button', { class: POSITION_CLASS.possible, type: 'button' });
+    for (const digit of NOTE_DIGITS) {
+      const cell = el('button', { class: POSITION_CLASS.possible, type: 'button', text: digit });
       cell.addEventListener('click', () => {
         notes.cyclePositionMark(digit, position);
         paintPosition(digit, position);
@@ -128,8 +114,7 @@ export function createNotesBoard(notes: GameNotes, codeLength: number): NotesBoa
     if (!cell) return;
     const mark = notes.getPositionMark(digit, position);
     cell.className = POSITION_CLASS[mark];
-    cell.textContent = POSITION_GLYPH[mark];
-    cell.setAttribute('aria-label', `數字 ${digit} 在第 ${position + 1} 位：${POSITION_LABEL[mark]}`);
+    cell.setAttribute('aria-label', `第 ${position + 1} 格是 ${digit}：${POSITION_LABEL[mark]}`);
   }
 
   function refresh(): void {

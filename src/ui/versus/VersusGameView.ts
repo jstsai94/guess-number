@@ -38,10 +38,14 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
 
   const roundLabel = el('span', { class: 'meta-round' });
   const timerLabel = el('span', { class: 'meta-timer' });
+  // 連線對戰沒有暫停，放棄放在猜電腦「暫停」按鈕的同一個位置
+  const surrenderButton = el('button', { class: 'btn-outline btn-small', type: 'button', text: '放棄' });
+  surrenderButton.addEventListener('click', () => void handleSurrender());
   const meta = el('div', { class: 'header-meta versus-meta' }, [
     el('span', { class: 'meta-room', text: `房號 ${match.roomCode}` }),
     roundLabel,
     timerLabel,
+    surrenderButton,
   ]);
 
   // ---------- 左欄：自己的猜測 ----------
@@ -53,10 +57,6 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
   const hintTouch = el('span', { class: 'hint-touch', text: HINT_TOUCH });
   const hint = el('p', { class: 'hint' }, [hintKeyboard, hintTouch]);
 
-  const surrenderButton = el('button', { class: 'btn-outline', type: 'button', text: '放棄這一局' });
-  surrenderButton.addEventListener('click', () => void handleSurrender());
-  const surrenderSlot = el('div', { class: 'surrender-slot' }, [surrenderButton]);
-
   const solvedNotice = el('div', { class: 'versus-solved', hidden: true }, [
     el('div', { class: 'versus-solved-title', text: '你猜中了！' }),
     el('div', { class: 'versus-solved-text', text: '等待對手…' }),
@@ -66,7 +66,6 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
     solvedNotice,
     input.el,
     hint,
-    surrenderSlot,
     history.el,
   ]);
 
@@ -218,6 +217,7 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
     history.render(session.guesses, CODE_LENGTH);
     solvedNotice.hidden = session.status !== 'won';
     leftColumn.classList.toggle('is-done', done);
+    surrenderButton.hidden = done;
     input.setEnabled(!done);
   }
 

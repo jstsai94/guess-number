@@ -230,8 +230,7 @@
 
 /* 自己已經猜中或放棄：收起輸入區。觸控裝置上 .input-area 是 display: contents，所以要用 !important */
 .panel-left.is-done .input-area,
-.panel-left.is-done .hint,
-.panel-left.is-done .surrender-slot {
+.panel-left.is-done .hint {
   display: none !important;
 }
 
@@ -298,6 +297,94 @@
 .result-verify.is-bad {
   color: var(--error);
   font-weight: 600;
+}
+
+/* 桌機（雙欄）：與 styles.css 一起放大約 1.2 倍 */
+@media (min-width: 1001px) {
+  .versus-body {
+    max-width: 720px;
+  }
+
+  .versus-title {
+    font-size: 25px;
+  }
+
+  .versus-join .slot {
+    flex-basis: 70px;
+    height: 70px;
+    font-size: 31px;
+  }
+
+  .versus-label,
+  .versus-hint,
+  .versus-subtitle {
+    font-size: 17px;
+  }
+
+  .room-code {
+    font-size: 55px;
+  }
+
+  .my-secret {
+    font-size: 46px;
+  }
+
+  .opponent-status {
+    font-size: 17px;
+  }
+
+  .opponent-state {
+    font-size: 22px;
+  }
+
+  .opponent-count {
+    font-size: 17px;
+  }
+
+  .opponent-my-secret {
+    font-size: 16px;
+  }
+
+  .history-row.is-compact {
+    padding: 11px 17px;
+  }
+
+  .history-row.is-compact .history-guess {
+    font-size: 24px;
+  }
+
+  .history-row.is-compact .history-result {
+    font-size: 26px;
+  }
+
+  .opponent-pending,
+  .opponent-empty {
+    font-size: 16px;
+  }
+
+  .versus-solved-title {
+    font-size: 29px;
+  }
+
+  .result-headline {
+    font-size: 36px;
+  }
+
+  .result-table .cell-head {
+    font-size: 16px;
+  }
+
+  .result-table .cell-label {
+    font-size: 18px;
+  }
+
+  .result-table .cell-value {
+    font-size: 22px;
+  }
+
+  .result-verify {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 720px) {

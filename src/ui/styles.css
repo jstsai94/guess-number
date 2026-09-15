@@ -347,10 +347,6 @@ button:focus-visible {
   display: none;
 }
 
-.surrender-slot:not(:empty) {
-  margin-top: 16px;
-}
-
 /* ---------- 歷史紀錄 ---------- */
 
 .history {
@@ -464,41 +460,35 @@ button:focus-visible {
   color: var(--text-soft);
 }
 
+/* 每一列是一格（第 1–4 格），列內是 0–9 十個數字 */
 .pos-grid {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
 .pos-row {
   display: grid;
-  grid-template-columns: 34px repeat(4, 1fr);
+  grid-template-columns: 52px repeat(10, minmax(0, 1fr));
   gap: 5px;
   align-items: center;
 }
 
-.pos-digit-label {
-  font-family: var(--mono);
-  font-size: 16px;
+.pos-label {
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-soft);
-  text-align: center;
-}
-
-.pos-head-cell {
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.pos-head {
-  margin-bottom: 1px;
+  white-space: nowrap;
 }
 
 .pos-cell {
   height: 38px;
+  min-width: 0;
+  padding: 0;
   border-radius: 9px;
-  font-size: 15px;
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
@@ -507,7 +497,7 @@ button:focus-visible {
 .pos-cell.is-possible {
   border: 1px solid var(--line-strong);
   background: var(--surface);
-  color: transparent;
+  color: var(--text);
 }
 
 .pos-cell.is-possible:hover {
@@ -519,6 +509,7 @@ button:focus-visible {
   border: 1px solid transparent;
   background: var(--impossible-bg);
   color: var(--impossible-text);
+  text-decoration: line-through;
 }
 
 .pos-cell.is-confirmed {
@@ -719,6 +710,10 @@ button:focus-visible {
   font-weight: 700;
 }
 
+.pause-surrender {
+  margin-top: 12px;
+}
+
 /* ---------- 結算：回到選單 ---------- */
 
 .result-menu {
@@ -825,12 +820,8 @@ button:focus-visible {
     order: 3;
   }
 
-  .surrender-slot {
-    order: 4;
-  }
-
   .history {
-    order: 5;
+    order: 4;
   }
 
   .input-row .submit {
@@ -957,17 +948,18 @@ button:focus-visible {
   }
 
   .pos-row {
-    grid-template-columns: 26px repeat(4, 1fr);
-    gap: 4px;
+    grid-template-columns: 40px repeat(10, minmax(0, 1fr));
+    gap: 3px;
   }
 
-  .pos-digit-label {
-    font-size: 14px;
+  .pos-label {
+    font-size: 12px;
   }
 
   .pos-cell {
-    height: 40px;
-    border-radius: 8px;
+    height: 36px;
+    border-radius: 7px;
+    font-size: 14px;
   }
 
   .overlay-card {
@@ -998,6 +990,241 @@ button:focus-visible {
 
   .mode-card {
     padding: 20px 18px;
+  }
+}
+
+/* ======================================================================
+ * 桌機（雙欄）：模塊與字級整體放大約 1.2 倍
+ * 平板與手機不受影響
+ * ====================================================================== */
+
+@media (min-width: 1001px) {
+  body {
+    font-size: 19px;
+  }
+
+  .app {
+    max-width: 1320px;
+  }
+
+  .btn-primary,
+  .btn-outline,
+  .btn-ghost {
+    font-size: 18px;
+    border-radius: 14px;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    height: 58px;
+  }
+
+  .btn-outline {
+    height: 52px;
+  }
+
+  .btn-small {
+    height: 42px;
+    padding: 0 18px;
+    font-size: 17px;
+  }
+
+  .title {
+    font-size: 37px;
+  }
+
+  .header-meta {
+    gap: 26px;
+    font-size: 21px;
+  }
+
+  .divider {
+    margin: 24px 0 32px;
+  }
+
+  .board {
+    gap: 24px;
+  }
+
+  .panel {
+    padding: 32px;
+    border-radius: 18px;
+  }
+
+  .panel-title {
+    margin-bottom: 22px;
+    font-size: 23px;
+  }
+
+  .input-row {
+    gap: 14px;
+  }
+
+  .slot {
+    flex: 0 0 80px;
+    height: 80px;
+    border-radius: 14px;
+    font-size: 35px;
+  }
+
+  .submit {
+    height: 80px;
+    padding: 0 40px;
+    border-radius: 14px;
+    font-size: 22px;
+  }
+
+  .hint {
+    margin-top: 16px;
+    font-size: 17px;
+  }
+
+  .history {
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .history-row {
+    gap: 22px;
+    padding: 17px 24px;
+    border-radius: 14px;
+  }
+
+  .history-index {
+    width: 46px;
+    font-size: 16px;
+  }
+
+  .history-guess {
+    font-size: 30px;
+  }
+
+  .history-result {
+    font-size: 36px;
+  }
+
+  .res-b {
+    margin-left: 12px;
+  }
+
+  .digit-grid {
+    gap: 11px;
+  }
+
+  .digit-mark {
+    border-radius: 14px;
+    font-size: 28px;
+  }
+
+  .notes-section-title {
+    margin-top: 28px;
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+
+  .pos-grid {
+    gap: 7px;
+  }
+
+  .pos-row {
+    grid-template-columns: 58px repeat(10, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .pos-label {
+    font-size: 16px;
+  }
+
+  .pos-cell {
+    height: 46px;
+    border-radius: 10px;
+    font-size: 19px;
+  }
+
+  .legend {
+    gap: 18px;
+    margin-top: 14px;
+    font-size: 15px;
+  }
+
+  .legend-swatch {
+    width: 15px;
+    height: 15px;
+  }
+
+  .stat-row {
+    font-size: 17px;
+  }
+
+  .stats-caption {
+    font-size: 15px;
+  }
+
+  .overlay-card {
+    max-width: 500px;
+    padding: 42px 44px 38px;
+    border-radius: 22px;
+  }
+
+  .result-title {
+    font-size: 30px;
+  }
+
+  .result-answer-label {
+    font-size: 16px;
+  }
+
+  .result-answer {
+    font-size: 52px;
+  }
+
+  .result-stats {
+    font-size: 17px;
+  }
+
+  .result-stat-value {
+    font-size: 24px;
+  }
+
+  .confirm-card {
+    max-width: 520px;
+  }
+
+  .confirm-title {
+    font-size: 23px;
+  }
+
+  .confirm-message {
+    font-size: 17px;
+  }
+
+  .pause-card {
+    max-width: 420px;
+  }
+
+  .pause-title {
+    font-size: 30px;
+  }
+
+  .menu {
+    max-width: 900px;
+  }
+
+  .menu-section-title {
+    font-size: 17px;
+  }
+
+  .mode-card {
+    padding: 30px 28px;
+    border-radius: 18px;
+  }
+
+  .mode-card-label {
+    font-size: 29px;
+  }
+
+  .mode-card-desc {
+    font-size: 17px;
   }
 }
 

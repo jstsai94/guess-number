@@ -62,22 +62,12 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   const hintTouch = el('span', { class: 'hint-touch', text: HINT_TOUCH });
   const hint = el('p', { class: 'hint' }, [hintKeyboard, hintTouch]);
 
-  // 放棄按鈕只在進行中存在，所以用一個容器，結束時把按鈕拿掉
-  const surrenderSlot = el('div', { class: 'surrender-slot' });
-  const surrenderButton = el('button', {
-    class: 'btn-outline',
-    type: 'button',
-    text: '放棄這一局',
-  });
-  surrenderButton.addEventListener('click', () => void handleSurrender());
-
   const notesBoard = createNotesBoard(session.notes, codeLength);
   const statsPanel = createStatsPanel(`${DIFFICULTY_LABEL[options.difficulty]}模式統計`);
 
   const leftColumn = el('section', { class: 'panel panel-left' }, [
     input.el,
     hint,
-    surrenderSlot,
     history.el,
   ]);
 
@@ -92,15 +82,19 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     onMenu: () => options.onMenu(),
   });
   const confirm = createConfirmDialog();
-  const pauseOverlay = createPauseOverlay({ onResume: handleResume });
+  const pauseOverlay = createPauseOverlay({
+    onResume: handleResume,
+    onSurrender: () => void handleSurrender(),
+  });
 
+  // 放棄是從暫停畫面發起的，二次確認必須疊在暫停畫面之上，所以排在它後面
   const root = el('div', { class: 'app' }, [
     header,
     el('div', { class: 'divider' }),
     el('div', { class: 'board' }, [leftColumn, rightColumn]),
     result.el,
-    confirm.el,
     pauseOverlay.el,
+    confirm.el,
   ]);
 
   /**
@@ -178,7 +172,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     input.focusActive();
   }
 
-  // ---------- 放棄 ----------
+  // ---------- 放棄（從暫停畫面發起） ----------
 
   async function handleSurrender(): Promise<void> {
     const confirmed = await confirm.ask({
@@ -187,9 +181,13 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
       confirmText: '確定放棄',
       cancelText: '再想想',
     });
-    if (!confirmed) return;
-    if (!session.surrender()) return;
+    if (!confirmed || !session.surrender()) {
+      // 回到暫停畫面，焦點送回「繼續」
+      if (session.isPaused) pauseOverlay.show();
+      return;
+    }
 
+    pauseOverlay.hide();
     render();
     await finish();
   }
@@ -251,15 +249,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     const round = session.isFinished ? session.guessCount : session.guessCount + 1;
     roundLabel.textContent = `第 ${round} 次`;
     history.render(session.guesses, codeLength);
-    renderSurrender();
     renderTimer();
-  }
-
-  function renderSurrender(): void {
-    const shouldShow = session.canSurrender;
-    const isShown = surrenderSlot.contains(surrenderButton);
-    if (shouldShow && !isShown) surrenderSlot.append(surrenderButton);
-    else if (!shouldShow && isShown) surrenderButton.remove();
   }
 
   function renderTimer(): void {
