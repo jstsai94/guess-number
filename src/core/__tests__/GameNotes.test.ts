@@ -99,13 +99,61 @@ describe('GameNotes 位置推理表', () => {
     expect(notes.getPositionMark('0', 0)).toBe('possible');
   });
 
-  it('與數字狀態列互不連動', () => {
+});
+
+describe('GameNotes 數字排除連動位置推理表', () => {
+  it('數字被排除時，四個位置一律為不可能', () => {
     const notes = new GameNotes();
     notes.setMark('5', 'excluded');
-    expect(notes.getPositionMark('5', 0)).toBe('possible');
 
+    expect(notes.isPositionLocked('5')).toBe(true);
+    for (let position = 0; position < 4; position += 1) {
+      expect(notes.getPositionMark('5', position)).toBe('impossible');
+    }
+    expect(notes.isPositionLocked('6')).toBe(false);
+    expect(notes.getPositionMark('6', 0)).toBe('possible');
+  });
+
+  it('排除中的數字，點擊位置不會改變標記', () => {
+    const notes = new GameNotes();
+    notes.setMark('5', 'excluded');
+    expect(notes.cyclePositionMark('5', 0)).toBe('impossible');
+    expect(notes.cyclePositionMark('5', 0)).toBe('impossible');
+
+    notes.setMark('5', 'unknown');
+    expect(notes.getPositionMark('5', 0)).toBe('possible');
+  });
+
+  it('取消排除後恢復原本自己標的位置標記', () => {
+    const notes = new GameNotes();
+    notes.setPositionMark('5', 2, 'confirmed');
+    notes.setPositionMark('5', 3, 'impossible');
+
+    notes.cycleMark('5'); // 未定 → 排除
+    expect(notes.getPositionMark('5', 2)).toBe('impossible');
+    expect(notes.getPositionMark('5', 0)).toBe('impossible');
+
+    notes.cycleMark('5'); // 排除 → 必有
+    expect(notes.getPositionMark('5', 2)).toBe('confirmed');
+    expect(notes.getPositionMark('5', 3)).toBe('impossible');
+    expect(notes.getPositionMark('5', 0)).toBe('possible');
+  });
+
+  it('0A0B 的 excludeAll 也會連動位置推理表', () => {
+    const notes = new GameNotes();
+    notes.excludeAll('1357');
+    expect(notes.getPositionMark('1', 0)).toBe('impossible');
+    expect(notes.getPositionMark('7', 3)).toBe('impossible');
+    expect(notes.getPositionMark('2', 0)).toBe('possible');
+  });
+
+  it('位置推理表不會反過來改動數字狀態列', () => {
+    const notes = new GameNotes();
     notes.setPositionMark('6', 1, 'confirmed');
     expect(notes.getMark('6')).toBe('unknown');
+
+    for (let position = 0; position < 4; position += 1) notes.setPositionMark('8', position, 'impossible');
+    expect(notes.getMark('8')).toBe('unknown');
   });
 });
 
@@ -121,6 +169,7 @@ describe('GameNotes 重置', () => {
 
     expect(notes.getMark('1')).toBe('unknown');
     expect(notes.getMark('2')).toBe('unknown');
+    expect(notes.getPositionMark('1', 0)).toBe('possible');
     expect(notes.getPositionMark('3', 0)).toBe('possible');
     expect(notes.getPositionMark('4', 3)).toBe('possible');
   });

@@ -10,11 +10,12 @@ const POSITION_CYCLE: readonly PositionMark[] = ['possible', 'impossible', 'conf
 /**
  * 一局遊戲的筆記狀態。
  *
- * 兩套彼此獨立的標記：
+ * 兩套標記：
  *   - 數字狀態列：這個數字「在不在答案裡」
  *   - 位置推理表：這個數字「能不能放在第 N 位」
  *
- * 兩者刻意不互相連動，怎麼推由玩家自己決定。
+ * 單向連動：數字被標為「排除」時，位置推理表上這個數字的每一位一律視為「不可能」；
+ * 取消排除後恢復玩家原本標的狀態。位置推理表不會反過來改動數字狀態列。
  *
  * 刻意做成 GameSession 的一部分，而不是獨立的全域狀態：
  * 新局＝新的 GameSession＝全新的 GameNotes，自動重置；
@@ -58,9 +59,18 @@ export class GameNotes {
 
   // ---------- 位置推理表 ----------
 
-  /** 取得「digit 放在第 position 位」的標記，沒標過就是 'possible'。position 由 0 起算。 */
+  /**
+   * 取得「digit 放在第 position 位」的標記，沒標過就是 'possible'。position 由 0 起算。
+   * 數字已被排除時一律是 'impossible'。
+   */
   getPositionMark(digit: string, position: number): PositionMark {
+    if (this.isPositionLocked(digit)) return 'impossible';
     return this.#positionMarks.get(positionKey(digit, position)) ?? 'possible';
+  }
+
+  /** 數字已被排除：這個數字在位置推理表上鎖定為不可能，點擊無效。 */
+  isPositionLocked(digit: string): boolean {
+    return this.getMark(digit) === 'excluded';
   }
 
   setPositionMark(digit: string, position: number, mark: PositionMark): void {
@@ -69,8 +79,9 @@ export class GameNotes {
     else this.#positionMarks.set(key, mark);
   }
 
-  /** 點擊一次：可能 → 不可能 → 確定 → 可能，回傳新狀態。 */
+  /** 點擊一次：可能 → 不可能 → 確定 → 可能，回傳新狀態。數字已被排除時不改變。 */
   cyclePositionMark(digit: string, position: number): PositionMark {
+    if (this.isPositionLocked(digit)) return 'impossible';
     const current = this.getPositionMark(digit, position);
     const next = POSITION_CYCLE[(POSITION_CYCLE.indexOf(current) + 1) % POSITION_CYCLE.length]!;
     this.setPositionMark(digit, position, next);

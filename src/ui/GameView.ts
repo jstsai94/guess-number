@@ -72,7 +72,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   ]);
 
   const rightColumn = el('aside', { class: 'panel panel-right' }, [
-    el('h2', { class: 'panel-title', text: '筆記板' }),
+    el('div', { class: 'panel-head' }, [el('h2', { class: 'panel-title', text: '筆記板' }), notesBoard.clearButton]),
     notesBoard.el,
     statsPanel.el,
   ]);
@@ -88,7 +88,8 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   });
 
   // 放棄是從暫停畫面發起的，二次確認必須疊在暫停畫面之上，所以排在它後面
-  const root = el('div', { class: 'app' }, [
+  // app-game：桌機上固定在一個視窗內，不出現頁面捲軸（見 styles.css）
+  const root = el('div', { class: 'app app-game' }, [
     header,
     el('div', { class: 'divider' }),
     el('div', { class: 'board' }, [leftColumn, rightColumn]),

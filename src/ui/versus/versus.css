@@ -299,91 +299,91 @@
   font-weight: 600;
 }
 
-/* 桌機（雙欄）：與 styles.css 一起放大約 1.2 倍 */
+/* 桌機（雙欄）：與 styles.css 一起放大約 1.1 倍 */
 @media (min-width: 1001px) {
   .versus-body {
-    max-width: 720px;
+    max-width: 680px;
   }
 
   .versus-title {
-    font-size: 25px;
+    font-size: 23px;
   }
 
   .versus-join .slot {
-    flex-basis: 70px;
-    height: 70px;
-    font-size: 31px;
+    flex-basis: 66px;
+    height: 66px;
+    font-size: 29px;
   }
 
   .versus-label,
   .versus-hint,
   .versus-subtitle {
-    font-size: 17px;
-  }
-
-  .room-code {
-    font-size: 55px;
-  }
-
-  .my-secret {
-    font-size: 46px;
-  }
-
-  .opponent-status {
-    font-size: 17px;
-  }
-
-  .opponent-state {
-    font-size: 22px;
-  }
-
-  .opponent-count {
-    font-size: 17px;
-  }
-
-  .opponent-my-secret {
     font-size: 16px;
   }
 
+  .room-code {
+    font-size: 50px;
+  }
+
+  .my-secret {
+    font-size: 42px;
+  }
+
+  .opponent-status {
+    font-size: 16px;
+  }
+
+  .opponent-state {
+    font-size: 20px;
+  }
+
+  .opponent-count {
+    font-size: 16px;
+  }
+
+  .opponent-my-secret {
+    font-size: 15px;
+  }
+
   .history-row.is-compact {
-    padding: 11px 17px;
+    padding: 10px 16px;
   }
 
   .history-row.is-compact .history-guess {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .history-row.is-compact .history-result {
-    font-size: 26px;
+    font-size: 24px;
   }
 
   .opponent-pending,
   .opponent-empty {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .versus-solved-title {
-    font-size: 29px;
+    font-size: 27px;
   }
 
   .result-headline {
-    font-size: 36px;
+    font-size: 33px;
   }
 
   .result-table .cell-head {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .result-table .cell-label {
-    font-size: 18px;
+    font-size: 17px;
   }
 
   .result-table .cell-value {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .result-verify {
-    font-size: 16px;
+    font-size: 15px;
   }
 }
 

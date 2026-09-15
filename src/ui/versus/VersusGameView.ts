@@ -85,7 +85,10 @@ export function createVersusGameView(options: VersusGameViewOptions): VersusGame
   ]);
 
   const notesBoard = createNotesBoard(session.notes, CODE_LENGTH);
-  const notesPanel = el('aside', { class: 'panel' }, [el('h2', { class: 'panel-title', text: '筆記板' }), notesBoard.el]);
+  const notesPanel = el('aside', { class: 'panel' }, [
+    el('div', { class: 'panel-head' }, [el('h2', { class: 'panel-title', text: '筆記板' }), notesBoard.clearButton]),
+    notesBoard.el,
+  ]);
 
   const confirm = createConfirmDialog();
 

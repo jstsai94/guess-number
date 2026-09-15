@@ -59,6 +59,8 @@ export function createVersusScreen(options: VersusScreenOptions): VersusScreenHa
     gameView = null;
     resultView = null;
     body.classList.toggle('is-wide', wide);
+    // 對戰中（雙欄）才在桌機上固定畫面；等待、設定、結算畫面照常捲動
+    root.classList.toggle('is-playing', wide);
     body.replaceChildren(node);
   }
 

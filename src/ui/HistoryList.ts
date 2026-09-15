@@ -7,7 +7,8 @@ export interface HistoryListHandle {
 }
 
 /**
- * 歷史紀錄。最新在最上，不做內捲，整頁自然往下長。
+ * 歷史紀錄，最新在最上。
+ * 手機與平板不做內捲、整頁自然往下長；桌機固定畫面時由 CSS 讓紀錄在區塊內捲動。
  */
 export function createHistoryList(): HistoryListHandle {
   const list = el('div', { class: 'history' });

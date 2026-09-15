@@ -4,6 +4,8 @@ import { el } from './dom';
 
 export interface NotesBoardHandle {
   readonly el: HTMLElement;
+  /** 「清除筆記」按鈕，由外層放進筆記板的標題列。 */
+  readonly clearButton: HTMLButtonElement;
   /** 依 notes 目前的狀態重繪。 */
   refresh(): void;
   setEnabled(enabled: boolean): void;
@@ -51,6 +53,8 @@ export function createNotesBoard(notes: GameNotes, codeLength: number): NotesBoa
     button.addEventListener('click', () => {
       notes.cycleMark(digit);
       paintDigit(digit);
+      // 排除與否會連動位置推理表上這個數字的每一格
+      paintPositionsOf(digit);
     });
     digitButtons.set(digit, button);
   }
@@ -113,27 +117,45 @@ export function createNotesBoard(notes: GameNotes, codeLength: number): NotesBoa
     const cell = positionButtons.get(cellKey(digit, position));
     if (!cell) return;
     const mark = notes.getPositionMark(digit, position);
-    cell.className = POSITION_CLASS[mark];
-    cell.setAttribute('aria-label', `第 ${position + 1} 格是 ${digit}：${POSITION_LABEL[mark]}`);
+    const locked = notes.isPositionLocked(digit);
+    cell.className = locked ? `${POSITION_CLASS[mark]} is-locked` : POSITION_CLASS[mark];
+    cell.setAttribute(
+      'aria-label',
+      `第 ${position + 1} 格是 ${digit}：${POSITION_LABEL[mark]}${locked ? '（數字已排除）' : ''}`,
+    );
+  }
+
+  function paintPositionsOf(digit: string): void {
+    for (let position = 0; position < codeLength; position += 1) {
+      paintPosition(digit, position);
+    }
   }
 
   function refresh(): void {
     for (const digit of NOTE_DIGITS) {
       paintDigit(digit);
-      for (let position = 0; position < codeLength; position += 1) {
-        paintPosition(digit, position);
-      }
+      paintPositionsOf(digit);
     }
   }
+
+  // ---------- 清除筆記 ----------
+
+  const clearButton = el('button', { class: 'btn-outline btn-small notes-clear', type: 'button', text: '清除筆記' });
+  clearButton.addEventListener('click', () => {
+    notes.reset();
+    refresh();
+  });
 
   refresh();
 
   return {
     el: root,
+    clearButton,
     refresh,
     setEnabled(enabled: boolean): void {
       for (const button of digitButtons.values()) button.disabled = !enabled;
       for (const cell of positionButtons.values()) cell.disabled = !enabled;
+      clearButton.disabled = !enabled;
     },
   };
 }
