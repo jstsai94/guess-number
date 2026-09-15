@@ -740,10 +740,15 @@ button:focus-visible {
   text-align: center;
 }
 
+/* 兩個區塊之間要留足距離，標題才看得出屬於下方的卡片 */
+.menu-section + .menu-section {
+  margin-top: 44px;
+}
+
 .menu-section-title {
-  margin: 0 0 14px;
+  margin: 0 0 18px;
   color: var(--text-soft);
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -984,6 +989,15 @@ button:focus-visible {
     margin-bottom: 24px;
   }
 
+  .menu-section + .menu-section {
+    margin-top: 32px;
+  }
+
+  .menu-section-title {
+    margin-bottom: 14px;
+    font-size: 18px;
+  }
+
   .mode-grid {
     grid-template-columns: 1fr;
   }
@@ -1210,8 +1224,13 @@ button:focus-visible {
     max-width: 900px;
   }
 
+  .menu-section + .menu-section {
+    margin-top: 56px;
+  }
+
   .menu-section-title {
-    font-size: 17px;
+    margin-bottom: 22px;
+    font-size: 24px;
   }
 
   .mode-card {
