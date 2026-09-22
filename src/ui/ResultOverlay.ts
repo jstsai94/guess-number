@@ -11,6 +11,8 @@ export interface ResultInfo {
 export interface ResultOverlayOptions {
   /** 以相同難度再玩一局。 */
   onRestart: () => void;
+  /** 看這一局的復盤。 */
+  onReview: () => void;
   /** 回到模式選擇畫面。 */
   onMenu: () => void;
 }
@@ -29,6 +31,11 @@ export function createResultOverlay(options: ResultOverlayOptions): ResultOverla
   const guessCountEl = el('strong', { class: 'result-stat-value' });
   const elapsedEl = el('strong', { class: 'result-stat-value' });
   const restartButton = el('button', { class: 'btn-primary btn-block', type: 'button', text: '再玩一次' });
+  const reviewButton = el('button', {
+    class: 'btn-outline btn-block result-review',
+    type: 'button',
+    text: '看復盤',
+  });
   const menuButton = el('button', {
     class: 'btn-ghost btn-block result-menu',
     type: 'button',
@@ -36,6 +43,7 @@ export function createResultOverlay(options: ResultOverlayOptions): ResultOverla
   });
 
   restartButton.addEventListener('click', () => options.onRestart());
+  reviewButton.addEventListener('click', () => options.onReview());
   menuButton.addEventListener('click', () => options.onMenu());
 
   const card = el('div', { class: 'overlay-card' }, [
@@ -47,6 +55,7 @@ export function createResultOverlay(options: ResultOverlayOptions): ResultOverla
       el('div', { class: 'result-stat' }, [el('span', { text: '用時' }), elapsedEl]),
     ]),
     restartButton,
+    reviewButton,
     menuButton,
   ]);
 
@@ -63,6 +72,8 @@ export function createResultOverlay(options: ResultOverlayOptions): ResultOverla
       answerEl.className = won ? 'result-answer is-win' : 'result-answer is-give-up';
       guessCountEl.textContent = `${info.guessCount} 次`;
       elapsedEl.textContent = formatDuration(info.elapsedMs);
+      // 一次都沒猜就沒有東西可以復盤
+      reviewButton.hidden = info.guessCount === 0;
 
       overlay.hidden = false;
       restartButton.focus();

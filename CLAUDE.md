@@ -74,6 +74,7 @@ src/
 │  ├─ LocalRandomCodemaker.ts  一般模式
 │  ├─ DevilCodemaker.ts      惡魔模式
 │  ├─ solver.ts              電腦解題：最壞情況最少的猜法與推理結果
+│  ├─ review.ts              復盤：每一步縮小了多少、電腦會怎麼猜
 │  ├─ GameNotes.ts           一局的筆記狀態
 │  ├─ GameSession.ts         一局遊戲（含暫停、放棄）
 │  ├─ index.ts               對外出入口

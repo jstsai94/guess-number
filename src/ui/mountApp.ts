@@ -1,6 +1,8 @@
+import type { Code, GameStatus, GuessRecord } from '../core';
 import { GameSession } from '../core';
 import { createGameView } from './GameView';
 import { createMenuView } from './MenuView';
+import { createReviewView } from './ReviewView';
 import { createSolverView } from './SolverView';
 import { createCodemaker } from './difficulty';
 import type { Difficulty } from './difficulty';
@@ -45,6 +47,25 @@ export function mountApp(root: HTMLElement): void {
     show(
       createGameView(session, {
         difficulty,
+        onRestart: () => void startGame(difficulty),
+        onReview: (guesses, answer, outcome) => startReview(difficulty, guesses, answer, outcome),
+        onMenu: showMenu,
+      }),
+    );
+  };
+
+  const startReview = (
+    difficulty: Difficulty,
+    guesses: readonly GuessRecord[],
+    answer: Code,
+    outcome: Exclude<GameStatus, 'playing'>,
+  ): void => {
+    show(
+      createReviewView({
+        difficulty,
+        guesses,
+        answer,
+        outcome,
         onRestart: () => void startGame(difficulty),
         onMenu: showMenu,
       }),

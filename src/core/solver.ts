@@ -200,6 +200,19 @@ function chooseGuessIndex(candidates: readonly number[]): number {
   return best;
 }
 
+/** 猜這一組時，最壞情況會剩下幾組（依目前仍可能的答案）。復盤用來比較玩家與電腦的選擇。 */
+export function worstCase(guess: Code, candidates: readonly Code[]): number {
+  const g = INDEX_OF.get(guess);
+  if (g === undefined) throw new Error(`worstCase: 不合法的密碼（${guess}）`);
+  if (candidates.length === 0) throw new Error('worstCase: 沒有任何可能的答案');
+  const indices = candidates.map((code) => {
+    const index = INDEX_OF.get(code);
+    if (index === undefined) throw new Error(`worstCase: 不合法的密碼（${code}）`);
+    return index;
+  });
+  return worstOf(g, indices, new Int32Array(FEEDBACK_KEYS));
+}
+
 /** 依目前仍可能的答案，挑出下一次要猜的組合。 */
 export function chooseGuess(candidates: readonly Code[]): Code {
   if (candidates.length === 0) throw new Error('chooseGuess: 沒有任何可能的答案');

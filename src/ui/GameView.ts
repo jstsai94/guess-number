@@ -1,4 +1,4 @@
-import type { CodeIssue, GameSession, RejectReason, SubmitResult } from '../core';
+import type { Code, CodeIssue, GameSession, GameStatus, GuessRecord, RejectReason, SubmitResult } from '../core';
 import { validateCode } from '../core';
 import { el, formatDuration } from './dom';
 import { createConfirmDialog } from './ConfirmDialog';
@@ -20,6 +20,12 @@ export interface GameViewOptions {
   difficulty: Difficulty;
   /** 「再玩一次」：由外層以相同難度開新局。 */
   onRestart: () => void;
+  /** 「看復盤」：由外層以這一局的紀錄與答案開復盤畫面。 */
+  onReview: (
+    guesses: readonly GuessRecord[],
+    answer: Code,
+    outcome: Exclude<GameStatus, 'playing'>,
+  ) => void;
   /** 「回到選單」：由外層切回模式選擇畫面。 */
   onMenu: () => void;
 }
@@ -77,8 +83,11 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     statsPanel.el,
   ]);
 
+  // 復盤需要答案，結算時才拿得到；先存起來給「看復盤」用
+  let revealedAnswer = '';
   const result = createResultOverlay({
     onRestart: () => options.onRestart(),
+    onReview: () => options.onReview(session.guesses, revealedAnswer, session.status === 'won' ? 'won' : 'surrendered'),
     onMenu: () => options.onMenu(),
   });
   const confirm = createConfirmDialog();
@@ -176,6 +185,12 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
   // ---------- 放棄（從暫停畫面發起） ----------
 
   async function handleSurrender(): Promise<void> {
+    // 一般模式一次都還沒猜：這一局等於沒開始，不必二次確認、也沒有答案好揭曉，直接回選單
+    if (options.difficulty === 'normal' && session.guessCount === 0) {
+      options.onMenu();
+      return;
+    }
+
     const confirmed = await confirm.ask({
       title: '確定要放棄這一局嗎？',
       message: countsTowardStats('surrendered', session.guessCount)
@@ -222,6 +237,7 @@ export function createGameView(session: GameSession, options: GameViewOptions): 
     statsPanel.render(recordResult(options.difficulty, outcome, session.guessCount, session.elapsedMs));
 
     const answer = (await session.getAnswer()) ?? '';
+    revealedAnswer = answer;
     result.show({
       outcome,
       guessCount: session.guessCount,

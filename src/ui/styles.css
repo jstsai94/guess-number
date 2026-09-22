@@ -867,7 +867,8 @@ button:focus-visible {
 }
 
 /* 猜測紀錄的每一列是按鈕：點了在右欄看那一步的說明 */
-.solver-row {
+.solver-row,
+.review-row {
   width: 100%;
   color: var(--text);
   font-family: inherit;
@@ -876,11 +877,13 @@ button:focus-visible {
   cursor: pointer;
 }
 
-.solver-row:hover {
+.solver-row:hover,
+.review-row:hover {
   border-color: var(--line-strong);
 }
 
-.solver-row.is-selected {
+.solver-row.is-selected,
+.review-row.is-selected {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -969,6 +972,59 @@ button:focus-visible {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* ---------- 復盤 ---------- */
+
+.review-title {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+.review-answer {
+  font-family: var(--mono);
+}
+
+.review-summary {
+  margin-bottom: 16px;
+}
+
+.review-line {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.review-line:last-child {
+  margin-bottom: 0;
+}
+
+.review-note {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* 標在「最可惜」的那一列 */
+.review-flag {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--b-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.result-review {
+  margin-top: 10px;
+}
+
 @media (min-width: 1001px) {
   /* 單機模式三張卡片並排 */
   .mode-grid.is-three {
@@ -977,6 +1033,14 @@ button:focus-visible {
 
   .solver-intro {
     font-size: 16px;
+  }
+
+  .review-line {
+    font-size: 17px;
+  }
+
+  .review-flag {
+    font-size: 13px;
   }
 
   .solver-step-head .history-guess {
