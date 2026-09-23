@@ -28,6 +28,7 @@ export interface GameSessionOptions {
 export class GameSession {
   readonly id: string;
   readonly config: GameConfig;
+  /** 開局（建立）時間。計時另從第一次送出開始，見 elapsedMs。 */
   readonly startedAt: number;
   /** 本局的筆記板狀態。新局＝新的 GameSession，筆記自動重置。 */
   readonly notes: GameNotes = new GameNotes();
@@ -37,6 +38,8 @@ export class GameSession {
   readonly #guesses: GuessRecord[] = [];
   readonly #guessed = new Set<Code>();
 
+  /** 計時起點：第一次送出猜測的時間；還沒送出過為 null。 */
+  #clockStartedAt: number | null = null;
   #status: GameStatus = 'playing';
   #finishedAt: number | null = null;
   /** 目前這次暫停的開始時間；沒有在暫停時為 null。 */
@@ -102,12 +105,13 @@ export class GameSession {
 
   /**
    * 本局實際遊玩時間（毫秒），**不含暫停的時間**。
+   *
+   * 計時從**第一次送出猜測**開始：開局後的思考時間不計入，
+   * 一次都還沒猜（例如直接放棄）時為 0。
    * 進行中以當下時間計算；暫停中停止增加；結束後固定。
    */
   get elapsedMs(): number {
-    const end = this.#finishedAt ?? this.#now();
-    const ongoingPauseMs = this.#pausedAt === null ? 0 : end - this.#pausedAt;
-    return end - this.startedAt - this.#pausedTotalMs - ongoingPauseMs;
+    return this.#elapsedAt(this.#finishedAt ?? this.#now());
   }
 
   /** 這組數字是否已經猜過（只算判定完成、寫入歷史的）。 */
@@ -141,6 +145,8 @@ export class GameSession {
       return { ok: false, reason: 'duplicate' };
     }
 
+    // 計時起點是「送出」的那一刻，判定等待的時間也算進去
+    const submittedAt = this.#now();
     this.#judging = true;
     let feedback: Feedback;
     try {
@@ -154,11 +160,19 @@ export class GameSession {
       return { ok: false, reason: 'finished' };
     }
 
+    const at = this.#now();
+    if (this.#clockStartedAt === null) {
+      // 第一次送出：計時從這裡開始，之前的思考與暫停都不算
+      this.#clockStartedAt = submittedAt;
+      this.#pausedTotalMs = 0;
+    }
+
     const record: GuessRecord = {
       index: this.#guesses.length + 1,
       guess,
       feedback,
-      at: this.#now(),
+      at,
+      elapsedMs: this.#elapsedAt(at),
     };
 
     this.#guesses.push(record);
@@ -200,6 +214,13 @@ export class GameSession {
   async getAnswer(): Promise<Code | null> {
     if (this.#status === 'playing') return null;
     return this.#codemaker.reveal();
+  }
+
+  /** 某個時間點的本局用時；還沒開始計時一律是 0。 */
+  #elapsedAt(end: number): number {
+    if (this.#clockStartedAt === null) return 0;
+    const ongoingPauseMs = this.#pausedAt === null ? 0 : end - this.#pausedAt;
+    return end - this.#clockStartedAt - this.#pausedTotalMs - ongoingPauseMs;
   }
 
   #finish(status: Exclude<GameStatus, 'playing'>): void {

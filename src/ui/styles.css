@@ -1010,6 +1010,13 @@ button:focus-visible {
   gap: 10px;
 }
 
+.review-time {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* 標在「最可惜」的那一列 */
 .review-flag {
   flex: none;
@@ -1039,8 +1046,9 @@ button:focus-visible {
     font-size: 17px;
   }
 
-  .review-flag {
-    font-size: 13px;
+  .review-flag,
+  .review-time {
+    font-size: 15px;
   }
 
   .solver-step-head .history-guess {

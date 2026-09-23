@@ -23,6 +23,11 @@ export interface ReviewStep {
   readonly candidatesBefore: number;
   /** 猜完之後剩幾組可能 */
   readonly candidatesAfter: number;
+  /**
+   * 這一步花了多久（毫秒，不含暫停）＝ 從上一次送出到這一次送出。
+   * 第一步是計時起點，為 null。
+   */
+  readonly durationMs: number | null;
   /** 你這組猜法最壞會剩幾組 */
   readonly worst: number;
   /** 猜的當下，這組本身還可不可能是答案 */
@@ -60,6 +65,7 @@ export function reviewGame(records: readonly GuessRecord[], answer: Code): GameR
 
   let candidates: Code[] = allCodes();
   const steps: ReviewStep[] = [];
+  let previousElapsedMs: number | null = null;
 
   for (const record of records) {
     const candidatesBefore = candidates.length;
@@ -81,12 +87,14 @@ export function reviewGame(records: readonly GuessRecord[], answer: Code): GameR
       feedback: record.feedback,
       candidatesBefore,
       candidatesAfter: candidates.length,
+      durationMs: previousElapsedMs === null ? null : record.elapsedMs - previousElapsedMs,
       worst,
       wasPossible,
       bestGuess,
       bestWorst,
       sameAsBest: worst === bestWorst,
     });
+    previousElapsedMs = record.elapsedMs;
   }
 
   let biggestMissIndex: number | null = null;

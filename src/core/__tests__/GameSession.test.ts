@@ -238,6 +238,7 @@ describe('GameSession 暫停', () => {
   it('暫停期間不計入用時', async () => {
     let t = 0;
     const game = await fixedSession(() => t);
+    await game.submitGuess('4567'); // 計時從第一次送出開始
 
     t = 1000;
     expect(game.elapsedMs).toBe(1000);
@@ -254,6 +255,7 @@ describe('GameSession 暫停', () => {
   it('多次暫停的時間會累計扣除', async () => {
     let t = 0;
     const game = await fixedSession(() => t);
+    await game.submitGuess('4567');
 
     t = 100;
     game.pause();
@@ -272,6 +274,7 @@ describe('GameSession 暫停', () => {
   it('猜中時的用時不含暫停時間，且結束後固定', async () => {
     let t = 0;
     const game = await fixedSession(() => t);
+    await game.submitGuess('4567');
 
     t = 1000;
     game.pause();
@@ -290,6 +293,7 @@ describe('GameSession 暫停', () => {
   it('暫停中可以放棄，用時結算到暫停開始的那一刻', async () => {
     let t = 0;
     const game = await fixedSession(() => t);
+    await game.submitGuess('4567');
 
     t = 3000;
     game.pause();
@@ -326,23 +330,77 @@ describe('GameSession 暫停', () => {
 });
 
 describe('GameSession 計時', () => {
-  it('進行中以當下時間計算，結束後固定', async () => {
+  it('第一次送出之前不計時', async () => {
     let t = 1000;
     const game = await fixedSession(() => t);
 
     expect(game.startedAt).toBe(1000);
     expect(game.finishedAt).toBeNull();
 
-    t = 1500;
+    t = 9000;
+    expect(game.elapsedMs).toBe(0);
+  });
+
+  it('一次都還沒猜就放棄，用時是 0', async () => {
+    let t = 1000;
+    const game = await fixedSession(() => t);
+
+    t = 8000;
+    expect(game.surrender()).toBe(true);
+    expect(game.elapsedMs).toBe(0);
+  });
+
+  it('計時從第一次送出開始，進行中以當下時間計算，結束後固定', async () => {
+    let t = 1000;
+    const game = await fixedSession(() => t);
+
+    t = 4000;
+    await game.submitGuess('4567'); // 計時起點
+
+    t = 4500;
     expect(game.elapsedMs).toBe(500);
 
-    t = 3000;
+    t = 6000;
     await game.submitGuess('0123');
     expect(game.status).toBe('won');
-    expect(game.finishedAt).toBe(3000);
+    expect(game.finishedAt).toBe(6000);
 
-    t = 9999;
+    t = 99999;
     expect(game.elapsedMs).toBe(2000);
+  });
+
+  it('第一次送出之前的暫停不影響計時', async () => {
+    let t = 0;
+    const game = await fixedSession(() => t);
+
+    game.pause();
+    t = 5000;
+    game.resume();
+
+    t = 6000;
+    await game.submitGuess('4567');
+    t = 6800;
+    expect(game.elapsedMs).toBe(800);
+  });
+
+  it('每一次猜測都記下當下的用時，不含暫停', async () => {
+    let t = 500;
+    const game = await fixedSession(() => t);
+
+    await game.submitGuess('4567'); // 計時起點
+    t = 1500;
+    await game.submitGuess('4568');
+
+    game.pause();
+    t = 3500;
+    game.resume(); // 暫停 2000
+
+    t = 4000;
+    await game.submitGuess('0123'); // 猜中
+
+    expect(game.guesses.map((r) => r.elapsedMs)).toEqual([0, 1000, 1500]);
+    expect(game.guesses.map((r) => r.at)).toEqual([500, 1500, 4000]);
+    expect(game.elapsedMs).toBe(1500);
   });
 });
 

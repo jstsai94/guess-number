@@ -7,8 +7,17 @@ import type { Code, GuessRecord } from '../types';
 
 const SLOW = 60_000;
 
+/** 每一次猜測間隔 30 秒，方便檢查「每一步花了多久」。 */
+const STEP_MS = 30_000;
+
 function recordsFor(answer: Code, guesses: readonly Code[]): GuessRecord[] {
-  return guesses.map((guess, i) => ({ index: i + 1, guess, feedback: judge(answer, guess), at: 0 }));
+  return guesses.map((guess, i) => ({
+    index: i + 1,
+    guess,
+    feedback: judge(answer, guess),
+    at: i * STEP_MS,
+    elapsedMs: i * STEP_MS,
+  }));
 }
 
 describe('reviewGame 每一步的組數', () => {
@@ -41,6 +50,35 @@ describe('reviewGame 每一步的組數', () => {
         expect(step.sameAsBest).toBe(step.worst === step.bestWorst);
         expect(step.candidatesAfter).toBeLessThanOrEqual(step.worst);
       }
+    },
+    SLOW,
+  );
+});
+
+describe('reviewGame 每一步花的時間', () => {
+  it(
+    '第一步是計時起點，之後每一步是與前一步的間隔',
+    () => {
+      const answer = '4721';
+      const review = reviewGame(recordsFor(answer, ['0123', '4567', answer]), answer);
+
+      expect(review.steps.map((s) => s.durationMs)).toEqual([null, STEP_MS, STEP_MS]);
+    },
+    SLOW,
+  );
+
+  it(
+    '間隔不固定時照實計算',
+    () => {
+      const answer = '4721';
+      const guesses = ['0123', '4567', answer];
+      const records = recordsFor(answer, guesses).map((record, i) => ({
+        ...record,
+        elapsedMs: [0, 5_000, 11_000][i]!,
+      }));
+
+      const review = reviewGame(records, answer);
+      expect(review.steps.map((s) => s.durationMs)).toEqual([null, 5_000, 6_000]);
     },
     SLOW,
   );

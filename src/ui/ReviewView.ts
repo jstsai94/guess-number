@@ -1,7 +1,7 @@
 import type { Code, GameReview, GameStatus, GuessRecord, ReviewStep } from '../core';
 import { reviewGame } from '../core';
 import type { Difficulty } from './difficulty';
-import { el } from './dom';
+import { el, formatDuration } from './dom';
 
 const CODE_LENGTH = 4;
 
@@ -97,6 +97,12 @@ export function createReviewView(options: ReviewViewOptions): ReviewViewHandle {
     ];
     if (isBiggestMiss) children.push(el('span', { class: 'review-flag', text: '最可惜' }));
     children.push(
+      el('span', {
+        class: 'review-time',
+        text: step.durationMs === null ? '—' : formatDuration(step.durationMs),
+      }),
+    );
+    children.push(
       el('span', { class: 'history-result' }, [
         el('span', { class: 'res-a', text: `${A}A` }),
         el('span', { class: 'res-b', text: `${B}B` }),
@@ -177,6 +183,9 @@ function renderStep(step: ReviewStep): HTMLElement[] {
   const thisStep = [
     `猜之前還有 ${step.candidatesBefore} 組可能，猜完剩 ${step.candidatesAfter} 組。`,
     `你這組猜法最壞會剩 ${step.worst} 組。`,
+    step.durationMs === null
+      ? '這一步是計時起點：第一次送出才開始計時。'
+      : `從上一次送出到這一次花了 ${formatDuration(step.durationMs)}。`,
   ];
   if (!step.wasPossible) thisStep.push('這組在猜的當下已經不可能是答案了。');
 

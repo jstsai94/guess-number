@@ -39,6 +39,11 @@ export interface GuessRecord {
   readonly feedback: Feedback;
   /** 判定完成、寫入歷史當下的 timestamp（毫秒）。 */
   readonly at: number;
+  /**
+   * 寫入歷史當下的本局用時（毫秒，不含暫停）。
+   * 計時從第一次送出開始，所以第一次猜測是 0；復盤用它算出每一步花了多久。
+   */
+  readonly elapsedMs: number;
 }
 
 /** 猜測被擋下的原因。對應的中文訊息由 UI 層決定。 */
